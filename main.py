@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QTextEdit, QLabel, QLineEdit, QSizePolicy
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QEvent
 import sys
 
 
@@ -68,6 +68,8 @@ class MainWindow(QMainWindow):
         container = QWidget()
         container.setLayout(main_layout)
         self.setCentralWidget(container)
+        # Clear focus from text inputs when clicking outside them
+        QApplication.instance().installEventFilter(self)
 
     def show_next_card(self):
         text = self.text_input.toPlainText().strip()
@@ -81,6 +83,22 @@ class MainWindow(QMainWindow):
         self.card_editor.set_term(next_term)
         self.text_input.setPlainText("\n".join(lines))
 
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.MouseButtonPress:
+            widget = QApplication.widgetAt(event.globalPos())
+            is_text = False
+            w = widget
+            while w:
+                if isinstance(w, (QLineEdit, QTextEdit)):
+                    is_text = True
+                    break
+                w = w.parent()
+            if not is_text:
+                focused = QApplication.focusWidget()
+                if isinstance(focused, (QLineEdit, QTextEdit)):
+                    focused.clearFocus()
+        return super().eventFilter(obj, event)
 
 app = QApplication(sys.argv)
 window = MainWindow()
