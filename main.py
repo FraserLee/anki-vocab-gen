@@ -68,7 +68,6 @@ class MainWindow(QMainWindow):
         container = QWidget()
         container.setLayout(main_layout)
         self.setCentralWidget(container)
-        # Clear focus from text inputs when clicking outside them
         QApplication.instance().installEventFilter(self)
 
     def show_next_card(self):
@@ -98,6 +97,11 @@ class MainWindow(QMainWindow):
                 focused = QApplication.focusWidget()
                 if isinstance(focused, (QLineEdit, QTextEdit)):
                     focused.clearFocus()
+        if event.type() == QEvent.KeyPress and event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            fw = QApplication.focusWidget()
+            if not isinstance(fw, (QLineEdit, QTextEdit, QPushButton)):
+                self.show_next_card()
+                return True
         return super().eventFilter(obj, event)
 
 app = QApplication(sys.argv)
