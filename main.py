@@ -36,23 +36,23 @@ class CardEditor(QWidget):
         self.definition_input = QLineEdit()
         self.definition_input.setPlaceholderText("Enter definition here")
         self.definition_input.hide()
-        self.definition_input.editingFinished.connect(lambda: self.finish_edit('definition'))
+        self.definition_input.editingFinished.connect(self._on_definition_finished)
         # Example sentence field
         self.example_display = QLabel("")
         self.example_input = QLineEdit()
         self.example_input.setPlaceholderText("Enter example sentence here")
         self.example_input.hide()
-        self.example_input.editingFinished.connect(lambda: self.finish_edit('example'))
+        self.example_input.editingFinished.connect(self._on_example_finished)
         # Pinyin field
         self.pinyin_display = QLabel("")
         self.pinyin_input = QLineEdit()
         self.pinyin_input.setPlaceholderText("Enter pinyin here")
         self.pinyin_input.hide()
-        self.pinyin_input.editingFinished.connect(lambda: self.finish_edit('pinyin'))
+        self.pinyin_input.editingFinished.connect(self._on_pinyin_finished)
         # Notes field
         self.notes_display = QLabel("")
         self.notes_display.setWordWrap(True)
-        self.notes_input = EditableTextEdit(finish_callback=lambda: self.finish_edit('notes'))
+        self.notes_input = EditableTextEdit(finish_callback=self._on_notes_finished)
         self.notes_input.setPlaceholderText("Enter notes here")
         self.notes_input.hide()
 
@@ -128,6 +128,33 @@ class CardEditor(QWidget):
         elif field == 'notes':
             txt = self.notes_input.toPlainText(); self.notes_display.setText(txt)
             self.notes_input.hide(); self.notes_display.show()
+    def _on_definition_finished(self):
+        self.finish_edit('definition')
+        self.definition_input.clearFocus()
+        mw = self.window()
+        if hasattr(mw, 'next_button'):
+            mw.next_button.setFocus()
+
+    def _on_example_finished(self):
+        self.finish_edit('example')
+        self.example_input.clearFocus()
+        mw = self.window()
+        if hasattr(mw, 'next_button'):
+            mw.next_button.setFocus()
+
+    def _on_pinyin_finished(self):
+        self.finish_edit('pinyin')
+        self.pinyin_input.clearFocus()
+        mw = self.window()
+        if hasattr(mw, 'next_button'):
+            mw.next_button.setFocus()
+
+    def _on_notes_finished(self):
+        self.finish_edit('notes')
+        self.notes_input.clearFocus()
+        mw = self.window()
+        if hasattr(mw, 'next_button'):
+            mw.next_button.setFocus()
 
 
 class MainWindow(QMainWindow):
