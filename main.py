@@ -4,6 +4,23 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QEvent
 import sys
+import os
+
+# Editable multi-line text: Enter finishes edit, Shift+Enter newline, blur also finishes
+class EditableTextEdit(QTextEdit):
+    def __init__(self, finish_callback=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.finish_callback = finish_callback
+    def focusOutEvent(self, event):
+        super().focusOutEvent(event)
+        if self.finish_callback:
+            self.finish_callback()
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter) and event.modifiers() == Qt.NoModifier:
+            if self.finish_callback:
+                self.finish_callback()
+        else:
+            super().keyPressEvent(event)
 
 
 class CardEditor(QWidget):
@@ -14,20 +31,103 @@ class CardEditor(QWidget):
         self.term_title = QLabel("(none)")
         self.term_title.setStyleSheet("font-weight: bold; font-size: 18px")
 
+        # Definition field (display and editor)
+        self.definition_display = QLabel("")
         self.definition_input = QLineEdit()
         self.definition_input.setPlaceholderText("Enter definition here")
+        self.definition_input.hide()
+        self.definition_input.editingFinished.connect(lambda: self.finish_edit('definition'))
+        # Example sentence field
+        self.example_display = QLabel("")
+        self.example_input = QLineEdit()
+        self.example_input.setPlaceholderText("Enter example sentence here")
+        self.example_input.hide()
+        self.example_input.editingFinished.connect(lambda: self.finish_edit('example'))
+        # Pinyin field
+        self.pinyin_display = QLabel("")
+        self.pinyin_input = QLineEdit()
+        self.pinyin_input.setPlaceholderText("Enter pinyin here")
+        self.pinyin_input.hide()
+        self.pinyin_input.editingFinished.connect(lambda: self.finish_edit('pinyin'))
+        # Notes field
+        self.notes_display = QLabel("")
+        self.notes_display.setWordWrap(True)
+        self.notes_input = EditableTextEdit(finish_callback=lambda: self.finish_edit('notes'))
+        self.notes_input.setPlaceholderText("Enter notes here")
+        self.notes_input.hide()
 
         layout = QVBoxLayout()
         layout.addWidget(self.term_label)
         layout.addWidget(self.term_title)
-        layout.addWidget(QLabel("Definition:"))
-        layout.addWidget(self.definition_input)
+        # Definition row
+        def_row = QHBoxLayout()
+        def_row.addWidget(QLabel("Definition:"))
+        def_row.addWidget(self.definition_display, 1)
+        def_row.addWidget(self.definition_input, 1)
+        layout.addLayout(def_row)
+        # Example sentence row
+        ex_row = QHBoxLayout()
+        ex_row.addWidget(QLabel("Example sentence:"))
+        ex_row.addWidget(self.example_display, 1)
+        ex_row.addWidget(self.example_input, 1)
+        layout.addLayout(ex_row)
+        # Pinyin row
+        pin_row = QHBoxLayout()
+        pin_row.addWidget(QLabel("Pinyin:"))
+        pin_row.addWidget(self.pinyin_display, 1)
+        pin_row.addWidget(self.pinyin_input, 1)
+        layout.addLayout(pin_row)
+        # Notes row
+        note_row = QVBoxLayout()
+        note_row.addWidget(QLabel("Notes:"))
+        # display then editor
+        note_row.addWidget(self.notes_display)
+        note_row.addWidget(self.notes_input)
+        layout.addLayout(note_row)
 
         self.setLayout(layout)
 
     def set_term(self, text):
         self.term_title.setText(text)
-        self.definition_input.clear()
+        # clear all fields and reset to display mode
+        self.definition_input.clear(); self.definition_display.setText("")
+        self.example_input.clear(); self.example_display.setText("")
+        self.pinyin_input.clear(); self.pinyin_display.setText("")
+        self.notes_input.clear(); self.notes_display.setText("")
+        self.definition_input.hide(); self.definition_display.show()
+        self.example_input.hide(); self.example_display.show()
+        self.pinyin_input.hide(); self.pinyin_display.show()
+        self.notes_input.hide(); self.notes_display.show()
+    def start_edit(self, field):
+        if field == 'definition':
+            self.definition_input.setText(self.definition_display.text())
+            self.definition_display.hide(); self.definition_input.show();
+            self.definition_input.setFocus(); self.definition_input.selectAll()
+        elif field == 'example':
+            self.example_input.setText(self.example_display.text())
+            self.example_display.hide(); self.example_input.show();
+            self.example_input.setFocus(); self.example_input.selectAll()
+        elif field == 'pinyin':
+            self.pinyin_input.setText(self.pinyin_display.text())
+            self.pinyin_display.hide(); self.pinyin_input.show();
+            self.pinyin_input.setFocus(); self.pinyin_input.selectAll()
+        elif field == 'notes':
+            self.notes_input.setPlainText(self.notes_display.text())
+            self.notes_display.hide(); self.notes_input.show();
+            self.notes_input.setFocus()
+    def finish_edit(self, field):
+        if field == 'definition':
+            txt = self.definition_input.text(); self.definition_display.setText(txt)
+            self.definition_input.hide(); self.definition_display.show()
+        elif field == 'example':
+            txt = self.example_input.text(); self.example_display.setText(txt)
+            self.example_input.hide(); self.example_display.show()
+        elif field == 'pinyin':
+            txt = self.pinyin_input.text(); self.pinyin_display.setText(txt)
+            self.pinyin_input.hide(); self.pinyin_display.show()
+        elif field == 'notes':
+            txt = self.notes_input.toPlainText(); self.notes_display.setText(txt)
+            self.notes_input.hide(); self.notes_display.show()
 
 
 class MainWindow(QMainWindow):
@@ -46,8 +146,6 @@ class MainWindow(QMainWindow):
         self.next_button = QPushButton("Next")
         self.next_button.clicked.connect(self.show_next_card)
 
-        # Trigger "Next" on Enter when focused on definition input
-        self.card_editor.definition_input.returnPressed.connect(self.show_next_card)
 
         # Layout
         main_layout = QHBoxLayout()
@@ -84,6 +182,7 @@ class MainWindow(QMainWindow):
 
 
     def eventFilter(self, obj, event):
+        # Clear focus on click outside text inputs
         if event.type() == QEvent.MouseButtonPress:
             widget = QApplication.widgetAt(event.globalPos())
             is_text = False
@@ -97,12 +196,34 @@ class MainWindow(QMainWindow):
                 focused = QApplication.focusWidget()
                 if isinstance(focused, (QLineEdit, QTextEdit)):
                     focused.clearFocus()
+        # Shortcut keys to edit fields: d=Definition, e=Example, p=Pinyin, n=Notes
+        if event.type() == QEvent.KeyPress and event.modifiers() == Qt.NoModifier:
+            # when typing inside any text input, do not trigger shortcuts
+            focused = QApplication.focusWidget()
+            if isinstance(focused, (QLineEdit, QTextEdit)):
+                return super().eventFilter(obj, event)
+            k = event.key()
+            if k == Qt.Key_D:
+                self.card_editor.start_edit('definition')
+                return True
+            if k == Qt.Key_E:
+                self.card_editor.start_edit('example')
+                return True
+            if k == Qt.Key_P:
+                self.card_editor.start_edit('pinyin')
+                return True
+            if k == Qt.Key_N:
+                self.card_editor.start_edit('notes')
+                return True
+        # Enter outside inputs still triggers Next
         if event.type() == QEvent.KeyPress and event.key() in (Qt.Key_Return, Qt.Key_Enter):
             fw = QApplication.focusWidget()
             if not isinstance(fw, (QLineEdit, QTextEdit, QPushButton)):
-                self.show_next_card()
-                return True
+                self.show_next_card(); return True
         return super().eventFilter(obj, event)
+
+data_dir = os.path.expanduser('~/.anki_card_gen')
+os.makedirs(data_dir, exist_ok=True)
 
 app = QApplication(sys.argv)
 window = MainWindow()
