@@ -79,9 +79,10 @@ class CardEditor(QWidget):
         layout.addLayout(pin_row)
         # Notes row
         note_row = QVBoxLayout()
-        note_row.addWidget(QLabel("Notes:"))
-        # display then editor
-        note_row.addWidget(self.notes_display)
+        sub_row = QHBoxLayout()
+        sub_row.addWidget(QLabel("Notes:"), alignment=Qt.AlignTop)
+        sub_row.addWidget(self.notes_display, 1, Qt.AlignTop)
+        note_row.addLayout(sub_row)
         note_row.addWidget(self.notes_input)
         layout.addLayout(note_row)
 
