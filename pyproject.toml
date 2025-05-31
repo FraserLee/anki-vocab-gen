@@ -7,7 +7,9 @@ dependencies = [
     "eng-to-ipa~=0.0.2",
     "pyqt5~=5.15",
     "nltk~=3.8",
-    "pypinyin~=0.51.0",
+    "pypinyin~=0.51",
+    "dragonmapper~=0.2.7",
+    "pycccedict~=1.2",
 ]
 
 [dependency-groups]
