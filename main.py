@@ -1,10 +1,10 @@
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QBoxLayout, QLayout,
     QPushButton, QTextEdit, QLabel, QLineEdit, QSizePolicy, QComboBox
 )
 from PyQt5.QtCore import Qt, QEvent, QObject
 from PyQt5.QtGui import QKeyEvent, QFocusEvent, QMouseEvent
-from typing import Any, Callable, Optional, cast, Dict
+from typing import Any, Callable, Optional, cast, Dict, Union
 from dataclasses import dataclass
 import sys
 import os
@@ -34,20 +34,20 @@ class CardField:
     label: str
     input_widget_cls: type
     placeholder: str
-
+    shortcut: Optional[int] = None
 
 LANGUAGE_FIELDS = {
     "Chinese": [
-        CardField("definition", "Definition:", QLineEdit, "Enter definition here"),
-        CardField("example", "Example sentence:", QLineEdit, "Enter example sentence here"),
-        CardField("pinyin", "Pinyin:", QLineEdit, "Enter pinyin here"),
-        CardField("notes", "Notes:", EditableTextEdit, "Enter notes here"),
+        CardField("definition", "Definition:", QLineEdit, "Enter definition here", Qt.Key_D),
+        CardField("example", "Example sentence:", QLineEdit, "Enter example sentence here", Qt.Key_E),
+        CardField("pinyin", "Pinyin:", QLineEdit, "Enter pinyin here", Qt.Key_P),
+        CardField("notes", "Notes:", EditableTextEdit, "Enter notes here", Qt.Key_N),
     ],
     "English": [
-        CardField("definition", "Definition:", QLineEdit, "Enter definition here"),
-        CardField("example", "Example sentence:", QLineEdit, "Enter example sentence here"),
-        CardField("ipa", "IPA:", QLineEdit, "Enter IPA here"),
-        CardField("notes", "Notes:", EditableTextEdit, "Enter notes here"),
+        CardField("definition", "Definition:", QLineEdit, "Enter definition here", Qt.Key_D),
+        CardField("example", "Example sentence:", QLineEdit, "Enter example sentence here", Qt.Key_E),
+        CardField("ipa", "IPA:", QLineEdit, "Enter IPA here", Qt.Key_I),
+        CardField("notes", "Notes:", EditableTextEdit, "Enter notes here", Qt.Key_N),
     ],
 }
 
@@ -56,7 +56,7 @@ class CardEditor(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self.fields = LANGUAGE_FIELDS["Chinese"]
-        self.widgets: Dict[str, tuple[QLabel, QWidget]] = {}
+        self.widgets: Dict[str, tuple[QLabel, Union[QLineEdit, EditableTextEdit]]] = {}
         self.term_title = QLabel("(none)")
         self.term_title.setStyleSheet("font-weight: bold; font-size: 18px")
         self._layout = QVBoxLayout()
@@ -87,7 +87,7 @@ class CardEditor(QWidget):
             input_widget.hide()
 
             if field.input_widget_cls == EditableTextEdit:
-                row = QVBoxLayout()
+                row: QBoxLayout = QVBoxLayout()
                 sub_row = QHBoxLayout()
                 sub_row.addWidget(QLabel(field.label), alignment=Qt.AlignTop)
                 sub_row.addWidget(display, 1, Qt.AlignTop)
@@ -119,7 +119,7 @@ class CardEditor(QWidget):
         self.widgets.clear()
         self._build_fields()
 
-    def _clear_layout(self, layout) -> None:
+    def _clear_layout(self, layout: QLayout) -> None:
         while layout.count():
             item = layout.takeAt(0)
             widget = item.widget()
@@ -260,21 +260,10 @@ class MainWindow(QMainWindow):
                 if isinstance(focused, (QLineEdit, QTextEdit)):
                     return super().eventFilter(obj, event)
                 k = ke.key()
-                if k == Qt.Key_D and 'definition' in self.card_editor.widgets:
-                    self.card_editor.start_edit('definition')
-                    return True
-                if k == Qt.Key_E and 'example' in self.card_editor.widgets:
-                    self.card_editor.start_edit('example')
-                    return True
-                if k == Qt.Key_P and 'pinyin' in self.card_editor.widgets:
-                    self.card_editor.start_edit('pinyin')
-                    return True
-                if k == Qt.Key_I and 'ipa' in self.card_editor.widgets:
-                    self.card_editor.start_edit('ipa')
-                    return True
-                if k == Qt.Key_N and 'notes' in self.card_editor.widgets:
-                    self.card_editor.start_edit('notes')
-                    return True
+                for field in self.card_editor.fields:
+                    if field.shortcut is not None and k == field.shortcut and field.key in self.card_editor.widgets:
+                        self.card_editor.start_edit(field.key)
+                        return True
             if ke.key() in (Qt.Key_Return, Qt.Key_Enter):
                 fw = QApplication.focusWidget()
                 if not isinstance(fw, (QLineEdit, QTextEdit, QPushButton)):
