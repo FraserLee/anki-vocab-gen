@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QBoxLayout, QLayout,
-    QPushButton, QTextEdit, QLabel, QLineEdit, QComboBox
+    QPushButton, QTextEdit, QLabel, QLineEdit, QComboBox, QScrollArea
 )
 from PyQt5.QtCore import Qt, QEvent, QObject
 from PyQt5.QtGui import QKeyEvent, QFocusEvent, QMouseEvent
@@ -297,6 +297,9 @@ class MainWindow(QMainWindow):
 
         # Right: card display
         self.card_editor = CardEditor()
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(self.card_editor)
 
         # Next button
         self.next_button = QPushButton("Next")
@@ -322,8 +325,7 @@ class MainWindow(QMainWindow):
         left_layout.addLayout(lang_row)
 
         right_layout = QVBoxLayout()
-        right_layout.addWidget(self.card_editor)
-        right_layout.addStretch()
+        right_layout.addWidget(scroll)
         right_layout.addWidget(self.next_button, alignment=Qt.AlignRight)
 
         main_layout.addLayout(left_layout)
