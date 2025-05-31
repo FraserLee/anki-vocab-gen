@@ -22,6 +22,7 @@ def english_defaults(word: str) -> List[Dict[str, str]]:
             "ipa": ipa,
             "example": example,
             "pos": pos,
+            "function": pos,
             "synonyms": synonyms,
         })
     if not options:
@@ -30,6 +31,7 @@ def english_defaults(word: str) -> List[Dict[str, str]]:
             "ipa": ipa,
             "example": "",
             "pos": "",
+            "function": "",
             "synonyms": "",
         })
     return options
