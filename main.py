@@ -59,7 +59,7 @@ class CardEditor(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self.fields = LANGUAGE_FIELDS["Chinese"]
-        self.defaults_provider: Callable[[str], Dict[str, str]] = lambda _: {}
+        self.defaults_provider: Callable[[str], Any] = lambda _: {}
         self.widgets: Dict[str, tuple[QLabel, Union[QLineEdit, QTextAreaEdit]]] = {}
         self.term_title = QLabel("(none)")
         self.term_title.setStyleSheet("font-weight: bold; font-size: 18px")
@@ -68,6 +68,9 @@ class CardEditor(QWidget):
         self._fields_start_index = self._layout.count()
         self._build_fields()
         self.setLayout(self._layout)
+        self.synset_options: list[Dict[str, str]] = []
+        self.current_syn_index: int = 0
+        self.selecting_synset: bool = False
 
     def _build_fields(self) -> None:
         for field in self.fields:
@@ -138,8 +141,20 @@ class CardEditor(QWidget):
                     self._clear_layout(sub_layout)
 
     def set_term(self, text: str) -> None:
-        self.term_title.setText(text)
-        defaults = self.defaults_provider(text)
+        options = self.defaults_provider(text)
+        if isinstance(options, list):
+            self.synset_options = options
+        else:
+            self.synset_options = [options]
+        self.current_syn_index = 0
+        self.selecting_synset = len(self.synset_options) > 1
+
+        title = text
+        if self.selecting_synset:
+            title = f"{text} (1/{len(self.synset_options)})"
+        self.term_title.setText(title)
+
+        defaults = self.synset_options[self.current_syn_index]
         for key, (display, input_widget) in self.widgets.items():
             input_widget.clear()
             display.setText(defaults.get(key, ""))
@@ -147,7 +162,8 @@ class CardEditor(QWidget):
             display.show()
 
     def start_edit(self, field_key: str) -> None:
-        if self.term_title.text() in ("(none)", "(no more terms)"):
+        # Block editing until synset selection is confirmed
+        if self.term_title.text() in ("(none)", "(no more terms)") or self.selecting_synset:
             return
         if field_key not in self.widgets:
             return
@@ -181,6 +197,40 @@ class CardEditor(QWidget):
         mw = self.window()
         if hasattr(mw, "next_button"):
             mw.next_button.setFocus()
+
+    def next_syn_option(self) -> None:
+        """Preview next synset option."""
+        if not self.selecting_synset:
+            return
+        self.current_syn_index = (self.current_syn_index + 1) % len(self.synset_options)
+        self._apply_current_defaults()
+
+    def prev_syn_option(self) -> None:
+        """Preview previous synset option."""
+        if not self.selecting_synset:
+            return
+        self.current_syn_index = (self.current_syn_index - 1) % len(self.synset_options)
+        self._apply_current_defaults()
+
+    def confirm_syn_option_selection(self) -> None:
+        """Confirm current synset option and disable selection mode."""
+        if not self.selecting_synset:
+            return
+        self.selecting_synset = False
+        text = self.term_title.text().split(" ", 1)[0]
+        self.term_title.setText(text)
+
+    def _apply_current_defaults(self) -> None:
+        """Apply synset defaults and update title with index."""
+        count = len(self.synset_options)
+        index = self.current_syn_index + 1
+        title = self.term_title.text().split(" ", 1)[0]
+        if self.selecting_synset:
+            title = f"{title} ({index}/{count})"
+        self.term_title.setText(title)
+        defaults = self.synset_options[self.current_syn_index]
+        for key, (display, input_widget) in self.widgets.items():
+            display.setText(defaults.get(key, ""))
 
 
 class MainWindow(QMainWindow):
@@ -264,10 +314,23 @@ class MainWindow(QMainWindow):
                     focused.clearFocus()
         if event.type() == QEvent.KeyPress:
             ke = cast(QKeyEvent, event)
+            if self.card_editor.selecting_synset:
+                if ke.key() == Qt.Key_Up:
+                    self.card_editor.prev_syn_option()
+                    return True
+                if ke.key() == Qt.Key_Down:
+                    self.card_editor.next_syn_option()
+                    return True
+                if ke.key() in (Qt.Key_Return, Qt.Key_Enter):
+                    self.card_editor.confirm_syn_option_selection()
+                    return True
             if int(ke.modifiers()) == Qt.NoModifier:
                 focused = QApplication.focusWidget()
                 if isinstance(focused, (QLineEdit, QTextEdit)):
                     return super().eventFilter(obj, event)
+                # While choosing between synsets, block editing shortcuts
+                if self.card_editor.selecting_synset:
+                    return True
                 k = ke.key()
                 for field in self.card_editor.fields:
                     if field.shortcut is not None and k == field.shortcut and field.key in self.card_editor.widgets:
