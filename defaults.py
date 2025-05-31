@@ -29,6 +29,7 @@ def get_syn_options(word: str, lang: str) -> List[Dict[str, Any]]:
 
     return options
 
+# ----------------------------------- ENGLISH ----------------------------------
 
 def english_defaults(word: str) -> List[Dict[str, Any]]:
 
@@ -45,6 +46,8 @@ def english_defaults(word: str) -> List[Dict[str, Any]]:
 
     return options
 
+# ----------------------------------- CHINESE ----------------------------------
+
 def chinese_defaults(word: str) -> List[Dict[str, Any]]:
     pinyin_list = pinyin(word, style=Style.TONE, heteronym=False)
     pinyin_str = " ".join(syll[0] for syll in pinyin_list)
@@ -55,6 +58,8 @@ def chinese_defaults(word: str) -> List[Dict[str, Any]]:
     if not options:
         options.append({})
     return options
+
+# ------------------------------------------------------------------------------
 
 LANGUAGE_DEFAULTS: Dict[str, Callable[[str], List[Dict[str, Any]]]] = {
     "English": english_defaults,
