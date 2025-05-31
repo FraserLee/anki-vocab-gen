@@ -157,6 +157,12 @@ class CardEditor(QWidget):
             self.synset_options = [options]
         self.current_syn_index = 0
         self.selecting_synset = len(self.synset_options) > 1
+        mw = self.window()
+        if hasattr(mw, "setWindowTitle"):
+            if self.selecting_synset:
+                mw.setWindowTitle("Press Up/Down to browse defaults, Space to select")
+            else:
+                mw.setWindowTitle("Card Editor")
 
         count = len(self.synset_options)
         index = 1
@@ -249,6 +255,9 @@ class CardEditor(QWidget):
         self._apply_current_defaults()
         text = self.term_title.text().split(" ", 1)[0]
         self.term_title.setText(text)
+        mw = self.window()
+        if hasattr(mw, "setWindowTitle"):
+            mw.setWindowTitle("Card Editor")
 
     def _apply_current_defaults(self) -> None:
         """Apply synset defaults and update title with index."""
