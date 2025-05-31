@@ -58,7 +58,7 @@ LANGUAGE_FIELDS = {
 class CardEditor(QWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.fields = LANGUAGE_FIELDS["Chinese"]
+        self.fields = LANGUAGE_FIELDS["English"]
         self.defaults_provider: Callable[[str], Any] = lambda _: {}
         self.widgets: Dict[str, tuple[QLabel, Union[QLineEdit, QTextAreaEdit]]] = {}
         self.term_title = QLabel("(none)")
@@ -240,7 +240,7 @@ class MainWindow(QMainWindow):
 
         # Left: multi-line text input
         self.text_input = QTextEdit()
-        self.text_input.setPlainText("研究员\n深度\n能力\n与\n积累\n高等教育")
+        self.text_input.setPlainText("run\njailhouse\nrock\n研究员\n深度\n能力\n与\n积累\n高等教育")
 
         # Right: card display
         self.card_editor = CardEditor()
@@ -260,7 +260,7 @@ class MainWindow(QMainWindow):
         lang_row = QHBoxLayout()
         lang_row.addWidget(QLabel("Target Language:"))
         self.target_lang_combo = QComboBox()
-        self.target_lang_combo.addItems(["Chinese", "English"])
+        self.target_lang_combo.addItems(["English", "Chinese"])
         self.target_lang_combo.currentTextChanged.connect(self.card_editor.set_fields)
         lang_row.addWidget(self.target_lang_combo)
         # initialize fields based on selected language
