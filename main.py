@@ -51,11 +51,18 @@ LANGUAGE_FIELDS = {
     ],
 }
 
+LANGUAGE_DEFAULTS = {
+    "English": lambda word: {
+        "definition": f"TODO: call to the system dictionary to get the definition of {word}",
+    },
+}
+
 
 class CardEditor(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self.fields = LANGUAGE_FIELDS["Chinese"]
+        self.defaults_provider: Callable[[str], Dict[str, str]] = lambda word: {}
         self.widgets: Dict[str, tuple[QLabel, Union[QLineEdit, QTextAreaEdit]]] = {}
         self.term_title = QLabel("(none)")
         self.term_title.setStyleSheet("font-weight: bold; font-size: 18px")
@@ -106,7 +113,10 @@ class CardEditor(QWidget):
             self.widgets[field.key] = (display, input_widget)
 
     def set_fields(self, lang: str) -> None:
+
         self.fields = LANGUAGE_FIELDS.get(lang, [])
+        self.defaults_provider = LANGUAGE_DEFAULTS.get(lang, lambda word: {})
+
         while self._layout.count() > self._fields_start_index:
             item = self._layout.takeAt(self._layout.count() - 1)
             widget = item.widget()
@@ -132,9 +142,10 @@ class CardEditor(QWidget):
 
     def set_term(self, text: str) -> None:
         self.term_title.setText(text)
-        for display, input_widget in self.widgets.values():
+        defaults = self.defaults_provider(text)
+        for key, (display, input_widget) in self.widgets.items():
             input_widget.clear()
-            display.setText("")
+            display.setText(defaults.get(key, ""))
             input_widget.hide()
             display.show()
 
