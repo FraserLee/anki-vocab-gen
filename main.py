@@ -145,6 +145,10 @@ class CardEditor(QWidget):
                     self._clear_layout(layout)
         self.widgets.clear()
         self._build_fields()
+        # If a term is already loaded, re-enter defaults-selection for it with the new language
+        curr = self.term_title.text().split(" ", 1)[0]
+        if curr not in ("(none)", "(no more terms)"):
+            self.set_term(curr)
 
     def _clear_layout(self, layout: QLayout) -> None:
         while layout.count():
