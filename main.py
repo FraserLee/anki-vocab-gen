@@ -42,11 +42,13 @@ LANGUAGE_FIELDS = {
     "Chinese": [
         CardField("definition",  "[d]efinition:",        QLineEdit,      "Enter definition here",        Qt.Key_D),
         CardField("pinyin",      "[p]inyin:",            QLineEdit,      "Enter pinyin here",            Qt.Key_P),
+        CardField("function",    "[f]unction:",          QLineEdit,      "Enter function here",          Qt.Key_F),
         CardField("example",     "[e]xample sentence:",  QLineEdit,      "Enter example sentence here",  Qt.Key_E),
         CardField("notes",       "[n]otes:",             QTextAreaEdit,  "Enter notes here",             Qt.Key_N),
     ],
     "English": [
         CardField("definition",  "[d]efinition:",        QLineEdit,      "Enter definition here",        Qt.Key_D),
+        CardField("function",    "[f]unction:",          QLineEdit,      "Enter function here",          Qt.Key_F),
         CardField("ipa",         "[i]pa:",               QLineEdit,      "Enter IPA here",               Qt.Key_I),
         CardField("example",     "[e]xample sentence:",  QLineEdit,      "Enter example sentence here",  Qt.Key_E),
         CardField("notes",       "[n]otes:",             QTextAreaEdit,  "Enter notes here",             Qt.Key_N),
