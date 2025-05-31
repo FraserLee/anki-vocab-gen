@@ -2,21 +2,25 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QTextEdit, QLabel, QLineEdit, QSizePolicy, QComboBox
 )
-from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtCore import Qt, QEvent, QObject
+from PyQt5.QtGui import QKeyEvent, QFocusEvent, QMouseEvent
+from typing import Any, Callable, Optional, cast
 import sys
 import os
 
 # Editable multi-line text: Enter finishes edit, Shift+Enter newline, blur also finishes
 class EditableTextEdit(QTextEdit):
-    def __init__(self, finish_callback=None, *args, **kwargs):
+    def __init__(self, finish_callback: Optional[Callable[[], None]] = None, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.finish_callback = finish_callback
-    def focusOutEvent(self, event):
+
+    def focusOutEvent(self, event: QFocusEvent) -> None:
         super().focusOutEvent(event)
         if self.finish_callback:
             self.finish_callback()
-    def keyPressEvent(self, event):
-        if event.key() in (Qt.Key_Return, Qt.Key_Enter) and event.modifiers() == Qt.NoModifier:
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter) and int(event.modifiers()) == Qt.NoModifier:
             if self.finish_callback:
                 self.finish_callback()
         else:
@@ -24,7 +28,7 @@ class EditableTextEdit(QTextEdit):
 
 
 class CardEditor(QWidget):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
         self.term_label = QLabel("Current Term:")
@@ -88,7 +92,7 @@ class CardEditor(QWidget):
 
         self.setLayout(layout)
 
-    def set_term(self, text):
+    def set_term(self, text: str) -> None:
         self.term_title.setText(text)
         # clear all fields and reset to display mode
         self.definition_input.clear(); self.definition_display.setText("")
@@ -99,7 +103,7 @@ class CardEditor(QWidget):
         self.example_input.hide(); self.example_display.show()
         self.pinyin_input.hide(); self.pinyin_display.show()
         self.notes_input.hide(); self.notes_display.show()
-    def start_edit(self, field):
+    def start_edit(self, field: str) -> None:
         if self.term_title.text() in ("(none)", "(no more terms)"):
             return
         if field == 'definition':
@@ -118,7 +122,7 @@ class CardEditor(QWidget):
             self.notes_input.setPlainText(self.notes_display.text())
             self.notes_display.hide(); self.notes_input.show();
             self.notes_input.setFocus()
-    def finish_edit(self, field):
+    def finish_edit(self, field: str) -> None:
         if field == 'definition':
             txt = self.definition_input.text(); self.definition_display.setText(txt)
             self.definition_input.hide(); self.definition_display.show()
@@ -131,28 +135,28 @@ class CardEditor(QWidget):
         elif field == 'notes':
             txt = self.notes_input.toPlainText(); self.notes_display.setText(txt)
             self.notes_input.hide(); self.notes_display.show()
-    def _on_definition_finished(self):
+    def _on_definition_finished(self) -> None:
         self.finish_edit('definition')
         self.definition_input.clearFocus()
         mw = self.window()
         if hasattr(mw, 'next_button'):
             mw.next_button.setFocus()
 
-    def _on_example_finished(self):
+    def _on_example_finished(self) -> None:
         self.finish_edit('example')
         self.example_input.clearFocus()
         mw = self.window()
         if hasattr(mw, 'next_button'):
             mw.next_button.setFocus()
 
-    def _on_pinyin_finished(self):
+    def _on_pinyin_finished(self) -> None:
         self.finish_edit('pinyin')
         self.pinyin_input.clearFocus()
         mw = self.window()
         if hasattr(mw, 'next_button'):
             mw.next_button.setFocus()
 
-    def _on_notes_finished(self):
+    def _on_notes_finished(self) -> None:
         self.finish_edit('notes')
         self.notes_input.clearFocus()
         mw = self.window()
@@ -161,7 +165,7 @@ class CardEditor(QWidget):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Card Editor")
 
@@ -202,9 +206,11 @@ class MainWindow(QMainWindow):
         container = QWidget()
         container.setLayout(main_layout)
         self.setCentralWidget(container)
-        QApplication.instance().installEventFilter(self)
+        inst: Optional[QObject] = QApplication.instance()
+        assert inst is not None
+        inst.installEventFilter(self)
 
-    def show_next_card(self):
+    def show_next_card(self) -> None:
         text = self.text_input.toPlainText().strip()
         lines = text.splitlines()
 
@@ -217,13 +223,14 @@ class MainWindow(QMainWindow):
         self.text_input.setPlainText("\n".join(lines))
 
 
-    def eventFilter(self, obj, event):
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
         # Clear focus on click outside text inputs
         if event.type() == QEvent.MouseButtonPress:
-            widget = QApplication.widgetAt(event.globalPos())
+            me = cast(QMouseEvent, event)
+            widget: Optional[QObject] = QApplication.widgetAt(me.globalPos())
             is_text = False
-            w = widget
-            while w:
+            w: Optional[QObject] = widget
+            while w is not None:
                 if isinstance(w, (QLineEdit, QTextEdit)):
                     is_text = True
                     break
@@ -232,30 +239,30 @@ class MainWindow(QMainWindow):
                 focused = QApplication.focusWidget()
                 if isinstance(focused, (QLineEdit, QTextEdit)):
                     focused.clearFocus()
-        # Shortcut keys to edit fields: d=Definition, e=Example, p=Pinyin, n=Notes
-        if event.type() == QEvent.KeyPress and event.modifiers() == Qt.NoModifier:
-            # when typing inside any text input, do not trigger shortcuts
-            focused = QApplication.focusWidget()
-            if isinstance(focused, (QLineEdit, QTextEdit)):
-                return super().eventFilter(obj, event)
-            k = event.key()
-            if k == Qt.Key_D:
-                self.card_editor.start_edit('definition')
-                return True
-            if k == Qt.Key_E:
-                self.card_editor.start_edit('example')
-                return True
-            if k == Qt.Key_P:
-                self.card_editor.start_edit('pinyin')
-                return True
-            if k == Qt.Key_N:
-                self.card_editor.start_edit('notes')
-                return True
-        # Enter outside inputs still triggers Next
-        if event.type() == QEvent.KeyPress and event.key() in (Qt.Key_Return, Qt.Key_Enter):
-            fw = QApplication.focusWidget()
-            if not isinstance(fw, (QLineEdit, QTextEdit, QPushButton)):
-                self.show_next_card(); return True
+        if event.type() == QEvent.KeyPress:
+            ke = cast(QKeyEvent, event)
+            if int(ke.modifiers()) == Qt.NoModifier:
+                focused = QApplication.focusWidget()
+                if isinstance(focused, (QLineEdit, QTextEdit)):
+                    return super().eventFilter(obj, event)
+                k = ke.key()
+                if k == Qt.Key_D:
+                    self.card_editor.start_edit('definition')
+                    return True
+                if k == Qt.Key_E:
+                    self.card_editor.start_edit('example')
+                    return True
+                if k == Qt.Key_P:
+                    self.card_editor.start_edit('pinyin')
+                    return True
+                if k == Qt.Key_N:
+                    self.card_editor.start_edit('notes')
+                    return True
+            if ke.key() in (Qt.Key_Return, Qt.Key_Enter):
+                fw = QApplication.focusWidget()
+                if not isinstance(fw, (QLineEdit, QTextEdit, QPushButton)):
+                    self.show_next_card()
+                    return True
         return super().eventFilter(obj, event)
 
 data_dir = os.path.expanduser('~/.anki_card_gen')
