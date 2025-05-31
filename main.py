@@ -236,7 +236,7 @@ class MainWindow(QMainWindow):
         inst.installEventFilter(self)
 
     def show_next_card(self) -> None:
-        text = self.text_input.toPlainText().strip()
+        text = self.text_input.toPlainText().strip().lower()
         lines = text.splitlines()
 
         if not lines:
