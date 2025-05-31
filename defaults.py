@@ -1,4 +1,5 @@
 from typing import Callable, Dict, List, Any
+import re
 import eng_to_ipa
 from nltk.corpus import wordnet
 
@@ -12,6 +13,10 @@ def english_defaults(word: str) -> List[Dict[str, Any]]:
     for syn in synsets:
         definition = syn.definition() or ""
         examples_list = syn.examples() or []
+        # bold occurrences of the term in each example sentence
+        pattern = re.compile(re.escape(word), re.IGNORECASE)
+        examples_list = [pattern.sub(lambda m: f"<b>{m.group(0)}</b>", ex)
+                         for ex in examples_list]
         raw_pos = syn.pos()
         pos = pos_map[raw_pos]
         lemmas = [lemma.name().replace("_", " ") for lemma in syn.lemmas()]
