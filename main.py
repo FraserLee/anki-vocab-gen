@@ -23,7 +23,7 @@ class QTextAreaEdit(QTextEdit):
             self.finish_callback()
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
-        if event.key() in (Qt.Key_Return, Qt.Key_Enter) and int(event.modifiers()) == Qt.NoModifier:
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Escape) and int(event.modifiers()) == Qt.NoModifier:
             if self.finish_callback:
                 self.finish_callback()
         else:
@@ -365,7 +365,7 @@ class MainWindow(QMainWindow):
                 if ke.key() == Qt.Key_Down:
                     self.card_editor.next_syn_option()
                     return True
-                if ke.key() in (Qt.Key_Return, Qt.Key_Enter):
+                if ke.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
                     self.card_editor.confirm_syn_option_selection()
                     return True
             if int(ke.modifiers()) == Qt.NoModifier:
@@ -380,7 +380,7 @@ class MainWindow(QMainWindow):
                     if field.shortcut is not None and k == field.shortcut and field.key in self.card_editor.widgets:
                         self.card_editor.start_edit(field.key)
                         return True
-            if ke.key() in (Qt.Key_Return, Qt.Key_Enter):
+            if ke.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
                 fw = QApplication.focusWidget()
                 if not isinstance(fw, (QLineEdit, QTextEdit, QPushButton)):
                     self.show_next_card()
