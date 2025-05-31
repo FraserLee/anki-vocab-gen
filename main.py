@@ -4,7 +4,8 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QEvent, QObject
 from PyQt5.QtGui import QKeyEvent, QFocusEvent, QMouseEvent
-from typing import Any, Callable, Optional, cast
+from typing import Any, Callable, Optional, cast, Dict
+from dataclasses import dataclass
 import sys
 import os
 
@@ -27,140 +28,143 @@ class EditableTextEdit(QTextEdit):
             super().keyPressEvent(event)
 
 
+@dataclass
+class CardField:
+    key: str
+    label: str
+    input_widget_cls: type
+    placeholder: str
+
+
+LANGUAGE_FIELDS = {
+    "Chinese": [
+        CardField("definition", "Definition:", QLineEdit, "Enter definition here"),
+        CardField("example", "Example sentence:", QLineEdit, "Enter example sentence here"),
+        CardField("pinyin", "Pinyin:", QLineEdit, "Enter pinyin here"),
+        CardField("notes", "Notes:", EditableTextEdit, "Enter notes here"),
+    ],
+    "English": [
+        CardField("definition", "Definition:", QLineEdit, "Enter definition here"),
+        CardField("example", "Example sentence:", QLineEdit, "Enter example sentence here"),
+        CardField("ipa", "IPA:", QLineEdit, "Enter IPA here"),
+        CardField("notes", "Notes:", EditableTextEdit, "Enter notes here"),
+    ],
+}
+
+
 class CardEditor(QWidget):
     def __init__(self) -> None:
         super().__init__()
-
+        self.fields = LANGUAGE_FIELDS["Chinese"]
+        self.widgets: Dict[str, tuple[QLabel, QWidget]] = {}
         self.term_label = QLabel("Current Term:")
         self.term_title = QLabel("(none)")
         self.term_title.setStyleSheet("font-weight: bold; font-size: 18px")
+        self._layout = QVBoxLayout()
+        self._layout.addWidget(self.term_label)
+        self._layout.addWidget(self.term_title)
+        self._fields_start_index = self._layout.count()
+        self._build_fields()
+        self.setLayout(self._layout)
 
-        # Definition field (display and editor)
-        self.definition_display = QLabel("")
-        self.definition_input = QLineEdit()
-        self.definition_input.setPlaceholderText("Enter definition here")
-        self.definition_input.hide()
-        self.definition_input.editingFinished.connect(self._on_definition_finished)
-        # Example sentence field
-        self.example_display = QLabel("")
-        self.example_input = QLineEdit()
-        self.example_input.setPlaceholderText("Enter example sentence here")
-        self.example_input.hide()
-        self.example_input.editingFinished.connect(self._on_example_finished)
-        # Pinyin field
-        self.pinyin_display = QLabel("")
-        self.pinyin_input = QLineEdit()
-        self.pinyin_input.setPlaceholderText("Enter pinyin here")
-        self.pinyin_input.hide()
-        self.pinyin_input.editingFinished.connect(self._on_pinyin_finished)
-        # Notes field
-        self.notes_display = QLabel("")
-        self.notes_display.setWordWrap(True)
-        self.notes_input = EditableTextEdit(finish_callback=self._on_notes_finished)
-        self.notes_input.setPlaceholderText("Enter notes here")
-        self.notes_input.hide()
+    def _build_fields(self) -> None:
+        for field in self.fields:
+            display = QLabel("")
+            if field.key == "notes":
+                display.setWordWrap(True)
+                input_widget = field.input_widget_cls(
+                    finish_callback=lambda k=field.key: self._on_field_finished(k)
+                )
+            else:
+                input_widget = field.input_widget_cls()
+                input_widget.editingFinished.connect(
+                    lambda k=field.key: self._on_field_finished(k)
+                )
+            input_widget.setPlaceholderText(field.placeholder)
+            input_widget.hide()
+            if field.key == "notes":
+                row = QVBoxLayout()
+                sub_row = QHBoxLayout()
+                sub_row.addWidget(QLabel(field.label), alignment=Qt.AlignTop)
+                sub_row.addWidget(display, 1, Qt.AlignTop)
+                row.addLayout(sub_row)
+                row.addWidget(input_widget)
+                self._layout.addLayout(row)
+            else:
+                row = QHBoxLayout()
+                row.addWidget(QLabel(field.label))
+                row.addWidget(display, 1)
+                row.addWidget(input_widget, 1)
+                self._layout.addLayout(row)
+            self.widgets[field.key] = (display, input_widget)
 
-        layout = QVBoxLayout()
-        layout.addWidget(self.term_label)
-        layout.addWidget(self.term_title)
-        # Definition row
-        def_row = QHBoxLayout()
-        def_row.addWidget(QLabel("Definition:"))
-        def_row.addWidget(self.definition_display, 1)
-        def_row.addWidget(self.definition_input, 1)
-        layout.addLayout(def_row)
-        # Example sentence row
-        ex_row = QHBoxLayout()
-        ex_row.addWidget(QLabel("Example sentence:"))
-        ex_row.addWidget(self.example_display, 1)
-        ex_row.addWidget(self.example_input, 1)
-        layout.addLayout(ex_row)
-        # Pinyin row
-        pin_row = QHBoxLayout()
-        pin_row.addWidget(QLabel("Pinyin:"))
-        pin_row.addWidget(self.pinyin_display, 1)
-        pin_row.addWidget(self.pinyin_input, 1)
-        layout.addLayout(pin_row)
-        # Notes row
-        note_row = QVBoxLayout()
-        sub_row = QHBoxLayout()
-        sub_row.addWidget(QLabel("Notes:"), alignment=Qt.AlignTop)
-        sub_row.addWidget(self.notes_display, 1, Qt.AlignTop)
-        note_row.addLayout(sub_row)
-        note_row.addWidget(self.notes_input)
-        layout.addLayout(note_row)
+    def set_fields(self, lang: str) -> None:
+        self.fields = LANGUAGE_FIELDS.get(lang, [])
+        while self._layout.count() > self._fields_start_index:
+            item = self._layout.takeAt(self._layout.count() - 1)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+            else:
+                layout = item.layout()
+                if layout:
+                    self._clear_layout(layout)
+        self.widgets.clear()
+        self._build_fields()
 
-        self.setLayout(layout)
+    def _clear_layout(self, layout) -> None:
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+            else:
+                sub_layout = item.layout()
+                if sub_layout:
+                    self._clear_layout(sub_layout)
 
     def set_term(self, text: str) -> None:
         self.term_title.setText(text)
-        # clear all fields and reset to display mode
-        self.definition_input.clear(); self.definition_display.setText("")
-        self.example_input.clear(); self.example_display.setText("")
-        self.pinyin_input.clear(); self.pinyin_display.setText("")
-        self.notes_input.clear(); self.notes_display.setText("")
-        self.definition_input.hide(); self.definition_display.show()
-        self.example_input.hide(); self.example_display.show()
-        self.pinyin_input.hide(); self.pinyin_display.show()
-        self.notes_input.hide(); self.notes_display.show()
-    def start_edit(self, field: str) -> None:
+        for display, input_widget in self.widgets.values():
+            input_widget.clear()
+            display.setText("")
+            input_widget.hide()
+            display.show()
+
+    def start_edit(self, field_key: str) -> None:
         if self.term_title.text() in ("(none)", "(no more terms)"):
             return
-        if field == 'definition':
-            self.definition_input.setText(self.definition_display.text())
-            self.definition_display.hide(); self.definition_input.show();
-            self.definition_input.setFocus(); self.definition_input.selectAll()
-        elif field == 'example':
-            self.example_input.setText(self.example_display.text())
-            self.example_display.hide(); self.example_input.show();
-            self.example_input.setFocus(); self.example_input.selectAll()
-        elif field == 'pinyin':
-            self.pinyin_input.setText(self.pinyin_display.text())
-            self.pinyin_display.hide(); self.pinyin_input.show();
-            self.pinyin_input.setFocus(); self.pinyin_input.selectAll()
-        elif field == 'notes':
-            self.notes_input.setPlainText(self.notes_display.text())
-            self.notes_display.hide(); self.notes_input.show();
-            self.notes_input.setFocus()
-    def finish_edit(self, field: str) -> None:
-        if field == 'definition':
-            txt = self.definition_input.text(); self.definition_display.setText(txt)
-            self.definition_input.hide(); self.definition_display.show()
-        elif field == 'example':
-            txt = self.example_input.text(); self.example_display.setText(txt)
-            self.example_input.hide(); self.example_display.show()
-        elif field == 'pinyin':
-            txt = self.pinyin_input.text(); self.pinyin_display.setText(txt)
-            self.pinyin_input.hide(); self.pinyin_display.show()
-        elif field == 'notes':
-            txt = self.notes_input.toPlainText(); self.notes_display.setText(txt)
-            self.notes_input.hide(); self.notes_display.show()
-    def _on_definition_finished(self) -> None:
-        self.finish_edit('definition')
-        self.definition_input.clearFocus()
-        mw = self.window()
-        if hasattr(mw, 'next_button'):
-            mw.next_button.setFocus()
+        if field_key not in self.widgets:
+            return
+        display, input_widget = self.widgets[field_key]
+        text = display.text()
+        if isinstance(input_widget, QLineEdit):
+            input_widget.setText(text)
+            input_widget.selectAll()
+        else:
+            input_widget.setPlainText(text)
+        display.hide()
+        input_widget.show()
+        input_widget.setFocus()
 
-    def _on_example_finished(self) -> None:
-        self.finish_edit('example')
-        self.example_input.clearFocus()
-        mw = self.window()
-        if hasattr(mw, 'next_button'):
-            mw.next_button.setFocus()
+    def finish_edit(self, field_key: str) -> None:
+        if field_key not in self.widgets:
+            return
+        display, input_widget = self.widgets[field_key]
+        if isinstance(input_widget, QLineEdit):
+            txt = input_widget.text()
+        else:
+            txt = input_widget.toPlainText()
+        display.setText(txt)
+        input_widget.hide()
+        display.show()
 
-    def _on_pinyin_finished(self) -> None:
-        self.finish_edit('pinyin')
-        self.pinyin_input.clearFocus()
+    def _on_field_finished(self, field_key: str) -> None:
+        self.finish_edit(field_key)
+        display, input_widget = self.widgets[field_key]
+        input_widget.clearFocus()
         mw = self.window()
-        if hasattr(mw, 'next_button'):
-            mw.next_button.setFocus()
-
-    def _on_notes_finished(self) -> None:
-        self.finish_edit('notes')
-        self.notes_input.clearFocus()
-        mw = self.window()
-        if hasattr(mw, 'next_button'):
+        if hasattr(mw, "next_button"):
             mw.next_button.setFocus()
 
 
@@ -192,7 +196,10 @@ class MainWindow(QMainWindow):
         lang_row.addWidget(QLabel("Target Language:"))
         self.target_lang_combo = QComboBox()
         self.target_lang_combo.addItems(["Chinese", "English"])
+        self.target_lang_combo.currentTextChanged.connect(self.card_editor.set_fields)
         lang_row.addWidget(self.target_lang_combo)
+        # initialize fields based on selected language
+        self.card_editor.set_fields(self.target_lang_combo.currentText())
         left_layout.addLayout(lang_row)
 
         right_layout = QVBoxLayout()
@@ -246,16 +253,18 @@ class MainWindow(QMainWindow):
                 if isinstance(focused, (QLineEdit, QTextEdit)):
                     return super().eventFilter(obj, event)
                 k = ke.key()
-                if k == Qt.Key_D:
+                if k == Qt.Key_D and 'definition' in self.card_editor.widgets:
                     self.card_editor.start_edit('definition')
                     return True
-                if k == Qt.Key_E:
+                if k == Qt.Key_E and 'example' in self.card_editor.widgets:
                     self.card_editor.start_edit('example')
                     return True
                 if k == Qt.Key_P:
-                    self.card_editor.start_edit('pinyin')
-                    return True
-                if k == Qt.Key_N:
+                    field_key = 'pinyin' if 'pinyin' in self.card_editor.widgets else 'ipa'
+                    if field_key in self.card_editor.widgets:
+                        self.card_editor.start_edit(field_key)
+                        return True
+                if k == Qt.Key_N and 'notes' in self.card_editor.widgets:
                     self.card_editor.start_edit('notes')
                     return True
             if ke.key() in (Qt.Key_Return, Qt.Key_Enter):
