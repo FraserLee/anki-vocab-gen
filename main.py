@@ -120,6 +120,8 @@ class CardEditor(QWidget):
 
             self.widgets[field.key] = (label_widget, display, input_widget)
 
+        self._layout.addStretch(1)
+
     def _strip_brackets(self, label: str) -> str:
         if len(label) >= 3 and label[0] == '[' and label[2] == ']':
             return label[1] + label[3:]
