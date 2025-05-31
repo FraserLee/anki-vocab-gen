@@ -66,6 +66,7 @@ class CardEditor(QWidget):
         self.term_title = QLabel("(none)")
         self.term_title.setStyleSheet("font-weight: bold; font-size: 18px")
         self.term_title.setWordWrap(True)
+        self.term_title.setTextFormat(Qt.RichText)
         self._layout = QVBoxLayout()
         self._layout.addWidget(self.term_title, alignment=Qt.AlignTop)
         self._fields_start_index = self._layout.count()
@@ -85,6 +86,7 @@ class CardEditor(QWidget):
             label_widget = QLabel(field.label)
             display = QLabel("")
             display.setWordWrap(True)
+            display.setTextFormat(Qt.RichText)
 
             if field.input_widget_cls == QTextAreaEdit:
                 input_widget = field.input_widget_cls(
@@ -206,7 +208,7 @@ class CardEditor(QWidget):
             _, display, _ = self.widgets.get("example", (None, None, None))
             if display is not None:
                 preview = "\n".join(
-                    f"({i+1}) {self._bold_term(ex)}" for i, ex in enumerate(self.example_options)
+                    f"({i+1}) {ex}" for i, ex in enumerate(self.example_options)
                 )
                 display.setText(preview)
             return
@@ -310,7 +312,7 @@ class CardEditor(QWidget):
         for key, (label_widget, display, _) in self.widgets.items():
             value = defaults.get(key, "")
             if isinstance(value, list):
-                value = "\n<hr/> ".join(value)
+                value = "\n<hr> ".join(value)
             display.setText(value)
             if self.selecting_synset:
                 label_widget.setText(self._strip_brackets(field_map[key].label))
