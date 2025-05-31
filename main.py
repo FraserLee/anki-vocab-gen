@@ -10,7 +10,7 @@ import sys
 import os
 
 # Editable multi-line text: Enter finishes edit, Shift+Enter newline, blur also finishes
-class EditableTextEdit(QTextEdit):
+class QTextAreaEdit(QTextEdit):
     def __init__(self, finish_callback: Optional[Callable[[], None]] = None, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.finish_callback = finish_callback
@@ -41,13 +41,13 @@ LANGUAGE_FIELDS = {
         CardField("definition", "Definition:", QLineEdit, "Enter definition here", Qt.Key_D),
         CardField("example", "Example sentence:", QLineEdit, "Enter example sentence here", Qt.Key_E),
         CardField("pinyin", "Pinyin:", QLineEdit, "Enter pinyin here", Qt.Key_P),
-        CardField("notes", "Notes:", EditableTextEdit, "Enter notes here", Qt.Key_N),
+        CardField("notes", "Notes:", QTextAreaEdit, "Enter notes here", Qt.Key_N),
     ],
     "English": [
         CardField("definition", "Definition:", QLineEdit, "Enter definition here", Qt.Key_D),
         CardField("example", "Example sentence:", QLineEdit, "Enter example sentence here", Qt.Key_E),
         CardField("ipa", "IPA:", QLineEdit, "Enter IPA here", Qt.Key_I),
-        CardField("notes", "Notes:", EditableTextEdit, "Enter notes here", Qt.Key_N),
+        CardField("notes", "Notes:", QTextAreaEdit, "Enter notes here", Qt.Key_N),
     ],
 }
 
@@ -56,7 +56,7 @@ class CardEditor(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self.fields = LANGUAGE_FIELDS["Chinese"]
-        self.widgets: Dict[str, tuple[QLabel, Union[QLineEdit, EditableTextEdit]]] = {}
+        self.widgets: Dict[str, tuple[QLabel, Union[QLineEdit, QTextAreaEdit]]] = {}
         self.term_title = QLabel("(none)")
         self.term_title.setStyleSheet("font-weight: bold; font-size: 18px")
         self._layout = QVBoxLayout()
@@ -70,7 +70,7 @@ class CardEditor(QWidget):
 
             display = QLabel("")
 
-            if field.input_widget_cls == EditableTextEdit:
+            if field.input_widget_cls == QTextAreaEdit:
                 display.setWordWrap(True)
                 input_widget = field.input_widget_cls(
                     finish_callback=lambda k=field.key: self._on_field_finished(k)
@@ -86,7 +86,7 @@ class CardEditor(QWidget):
             input_widget.setPlaceholderText(field.placeholder)
             input_widget.hide()
 
-            if field.input_widget_cls == EditableTextEdit:
+            if field.input_widget_cls == QTextAreaEdit:
                 row: QBoxLayout = QVBoxLayout()
                 sub_row = QHBoxLayout()
                 sub_row.addWidget(QLabel(field.label), alignment=Qt.AlignTop)
