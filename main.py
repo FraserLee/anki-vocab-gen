@@ -65,8 +65,9 @@ class CardEditor(QWidget):
         self.widgets: Dict[str, tuple[QLabel, Union[QLineEdit, QTextAreaEdit]]] = {}
         self.term_title = QLabel("(none)")
         self.term_title.setStyleSheet("font-weight: bold; font-size: 18px")
+        self.term_title.setWordWrap(True)
         self._layout = QVBoxLayout()
-        self._layout.addWidget(self.term_title)
+        self._layout.addWidget(self.term_title, alignment=Qt.AlignTop)
         self._fields_start_index = self._layout.count()
         self._build_fields()
         self.setLayout(self._layout)
@@ -78,9 +79,9 @@ class CardEditor(QWidget):
         for field in self.fields:
 
             display = QLabel("")
+            display.setWordWrap(True)
 
             if field.input_widget_cls == QTextAreaEdit:
-                display.setWordWrap(True)
                 input_widget = field.input_widget_cls(
                     finish_callback=lambda k=field.key: self._on_field_finished(k)
                 )
@@ -105,9 +106,9 @@ class CardEditor(QWidget):
                 self._layout.addLayout(row)
             elif field.input_widget_cls == QLineEdit:
                 row = QHBoxLayout()
-                row.addWidget(QLabel(field.label))
-                row.addWidget(display, 1)
-                row.addWidget(input_widget, 1)
+                row.addWidget(QLabel(field.label), alignment=Qt.AlignTop)
+                row.addWidget(display, 1, Qt.AlignTop)
+                row.addWidget(input_widget, 1, Qt.AlignTop)
                 self._layout.addLayout(row)
             else:
                 raise ValueError(f"Unsupported input widget class: {field.input_widget_cls}")
