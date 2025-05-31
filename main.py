@@ -310,7 +310,7 @@ class CardEditor(QWidget):
         for key, (label_widget, display, _) in self.widgets.items():
             value = defaults.get(key, "")
             if isinstance(value, list):
-                value = "\n".join(value)
+                value = "\n<hr/> ".join(value)
             display.setText(value)
             if self.selecting_synset:
                 label_widget.setText(self._strip_brackets(field_map[key].label))
