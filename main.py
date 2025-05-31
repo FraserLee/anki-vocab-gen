@@ -124,7 +124,7 @@ class CardEditor(QWidget):
     def set_fields(self, lang: str) -> None:
 
         self.fields = LANGUAGE_FIELDS.get(lang, [])
-        self.defaults_provider = LANGUAGE_DEFAULTS.get(lang, lambda word: {})
+        self.defaults_provider = LANGUAGE_DEFAULTS.get(lang, lambda _: {})
 
         while self._layout.count() > self._fields_start_index:
             item = self._layout.takeAt(self._layout.count() - 1)
@@ -197,7 +197,7 @@ class CardEditor(QWidget):
             return
         if field_key not in self.widgets:
             return
-        label_widget, display, input_widget = self.widgets[field_key]
+        _, display, input_widget = self.widgets[field_key]
         text = display.text()
         if isinstance(input_widget, QLineEdit):
             input_widget.setText(text)
@@ -227,7 +227,7 @@ class CardEditor(QWidget):
 
     def _on_field_finished(self, field_key: str) -> None:
         self.finish_edit(field_key)
-        _, display, input_widget = self.widgets[field_key]
+        _, _, input_widget = self.widgets[field_key]
         input_widget.clearFocus()
         mw = self.window()
         if hasattr(mw, "next_button"):
@@ -278,7 +278,7 @@ class CardEditor(QWidget):
         defaults = self.synset_options[self.current_syn_index]
         # update display-only fields and unbracket labels
         field_map = {f.key: f for f in self.fields}
-        for key, (label_widget, display, input_widget) in self.widgets.items():
+        for key, (label_widget, display, _) in self.widgets.items():
             display.setText(defaults.get(key, ""))
             if self.selecting_synset:
                 label_widget.setText(self._strip_brackets(field_map[key].label))
@@ -369,10 +369,10 @@ class MainWindow(QMainWindow):
         if event.type() == QEvent.KeyPress:
             ke = cast(QKeyEvent, event)
             if self.card_editor.selecting_synset:
-                if ke.key() == Qt.Key_Up:
+                if ke.key() in (Qt.Key_Up, Qt.Key_K):
                     self.card_editor.prev_syn_option()
                     return True
-                if ke.key() == Qt.Key_Down:
+                if ke.key() in (Qt.Key_Down, Qt.Key_J, Qt.Key_Tab):
                     self.card_editor.next_syn_option()
                     return True
                 if ke.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
