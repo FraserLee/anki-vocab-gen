@@ -8,7 +8,7 @@ def english_defaults(word: str) -> List[Dict[str, str]]:
     ipa_list = eng_to_ipa.convert(word, retrieve_all=True)
     ipa = "/" + "; ".join(ipa_list) + "/"
     options: List[Dict[str, str]] = []
-    pos_map = {"n": "noun", "v": "verb", "a": "adj", "s": "adj", "r": "adv"}
+    pos_map = {"n": "noun", "v": "verb", "a": "adjective", "r": "adverb"}
     for syn in synsets:
         definition = syn.definition() or ""
         examples_list = syn.examples() or []
