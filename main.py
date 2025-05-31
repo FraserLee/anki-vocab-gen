@@ -67,20 +67,26 @@ class CardEditor(QWidget):
 
     def _build_fields(self) -> None:
         for field in self.fields:
+
             display = QLabel("")
-            if field.key == "notes":
+
+            if field.input_widget_cls == EditableTextEdit:
                 display.setWordWrap(True)
                 input_widget = field.input_widget_cls(
                     finish_callback=lambda k=field.key: self._on_field_finished(k)
                 )
-            else:
+            elif field.input_widget_cls == QLineEdit:
                 input_widget = field.input_widget_cls()
                 input_widget.editingFinished.connect(
                     lambda k=field.key: self._on_field_finished(k)
                 )
+            else:
+                raise ValueError(f"Unsupported input widget class: {field.input_widget_cls}")
+
             input_widget.setPlaceholderText(field.placeholder)
             input_widget.hide()
-            if field.key == "notes":
+
+            if field.input_widget_cls == EditableTextEdit:
                 row = QVBoxLayout()
                 sub_row = QHBoxLayout()
                 sub_row.addWidget(QLabel(field.label), alignment=Qt.AlignTop)
@@ -88,12 +94,15 @@ class CardEditor(QWidget):
                 row.addLayout(sub_row)
                 row.addWidget(input_widget)
                 self._layout.addLayout(row)
-            else:
+            elif field.input_widget_cls == QLineEdit:
                 row = QHBoxLayout()
                 row.addWidget(QLabel(field.label))
                 row.addWidget(display, 1)
                 row.addWidget(input_widget, 1)
                 self._layout.addLayout(row)
+            else:
+                raise ValueError(f"Unsupported input widget class: {field.input_widget_cls}")
+
             self.widgets[field.key] = (display, input_widget)
 
     def set_fields(self, lang: str) -> None:
@@ -257,11 +266,12 @@ class MainWindow(QMainWindow):
                 if k == Qt.Key_E and 'example' in self.card_editor.widgets:
                     self.card_editor.start_edit('example')
                     return True
-                if k == Qt.Key_P:
-                    field_key = 'pinyin' if 'pinyin' in self.card_editor.widgets else 'ipa'
-                    if field_key in self.card_editor.widgets:
-                        self.card_editor.start_edit(field_key)
-                        return True
+                if k == Qt.Key_P and 'pinyin' in self.card_editor.widgets:
+                    self.card_editor.start_edit('pinyin')
+                    return True
+                if k == Qt.Key_I and 'ipa' in self.card_editor.widgets:
+                    self.card_editor.start_edit('ipa')
+                    return True
                 if k == Qt.Key_N and 'notes' in self.card_editor.widgets:
                     self.card_editor.start_edit('notes')
                     return True
