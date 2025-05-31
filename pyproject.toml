@@ -7,6 +7,7 @@ dependencies = [
     "eng-to-ipa~=0.0.2",
     "pyqt5~=5.15",
     "nltk~=3.8",
+    "pypinyin~=0.51.0",
 ]
 
 [dependency-groups]

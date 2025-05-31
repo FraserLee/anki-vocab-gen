@@ -353,7 +353,6 @@ class MainWindow(QMainWindow):
         self.target_lang_combo.currentTextChanged.connect(self.card_editor.set_fields)
         lang_row.addWidget(self.target_lang_combo)
         lang_row.addStretch()
-        # initialize fields based on selected language
         self.card_editor.set_fields(self.target_lang_combo.currentText())
         left_layout.addLayout(lang_row)
         left_layout.addWidget(QLabel("Queue:"))
