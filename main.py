@@ -7,9 +7,9 @@ from PyQt5.QtGui import QKeyEvent, QFocusEvent, QMouseEvent
 from dataclasses import dataclass
 from defaults import LANGUAGE_DEFAULTS
 from typing import Any, Callable, Optional, cast, Dict, Union
-import os
 import sys
 import unicodedata
+import data
 
 # Editable multi-line text: Enter finishes edit, Shift+Enter newline, blur also finishes
 class QTextAreaEdit(QTextEdit):
@@ -280,9 +280,7 @@ class MainWindow(QMainWindow):
                     return True
         return super().eventFilter(obj, event)
 
-data_dir = os.path.expanduser('~/.anki_card_gen')
-os.makedirs(data_dir, exist_ok=True)
-
+data.init()
 app = QApplication(sys.argv)
 window = MainWindow()
 window.resize(600, 300)
