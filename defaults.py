@@ -1,18 +1,17 @@
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, Any
 import eng_to_ipa
 from nltk.corpus import wordnet
 
-def english_defaults(word: str) -> List[Dict[str, str]]:
-    """Return a list of default options (definition, IPA, example, POS, synonyms) for each WordNet synset."""
+def english_defaults(word: str) -> List[Dict[str, Any]]:
+    """Return a list of default options (definition, IPA, examples, POS, synonyms) for each WordNet synset."""
     synsets = wordnet.synsets(word, lang='eng')
     ipa_list = eng_to_ipa.convert(word, retrieve_all=True)
     ipa = "/" + "; ".join(ipa_list) + "/"
-    options: List[Dict[str, str]] = []
+    options: List[Dict[str, Any]] = []
     pos_map = {"n": "noun", "v": "verb", "a": "adjective", "r": "adverb"}
     for syn in synsets:
         definition = syn.definition() or ""
         examples_list = syn.examples() or []
-        example = "; ".join(examples_list)
         raw_pos = syn.pos()
         pos = pos_map[raw_pos]
         lemmas = [lemma.name().replace("_", " ") for lemma in syn.lemmas()]
@@ -20,7 +19,7 @@ def english_defaults(word: str) -> List[Dict[str, str]]:
         options.append({
             "definition": definition,
             "ipa": ipa,
-            "example": example,
+            "examples": examples_list,
             "pos": pos,
             "function": pos,
             "synonyms": synonyms,
@@ -29,13 +28,13 @@ def english_defaults(word: str) -> List[Dict[str, str]]:
         options.append({
             "definition": "",
             "ipa": ipa,
-            "example": "",
+            "examples": [],
             "pos": "",
             "function": "",
             "synonyms": "",
         })
     return options
 
-LANGUAGE_DEFAULTS: Dict[str, Callable[[str], List[Dict[str, str]]]] = {
+LANGUAGE_DEFAULTS: Dict[str, Callable[[str], List[Dict[str, Any]]]] = {
     "English": english_defaults,
 }

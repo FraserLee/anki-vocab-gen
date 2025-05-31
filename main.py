@@ -6,7 +6,7 @@ from PyQt5.QtCore import Qt, QEvent, QObject
 from PyQt5.QtGui import QKeyEvent, QFocusEvent, QMouseEvent
 from dataclasses import dataclass
 from defaults import LANGUAGE_DEFAULTS
-from typing import Any, Callable, Optional, cast, Dict, Union
+from typing import Any, Callable, Dict, List, Optional, Union, cast
 import sys
 import unicodedata
 import data
@@ -74,6 +74,10 @@ class CardEditor(QWidget):
         self.synset_options: list[Dict[str, str]] = []
         self.current_syn_index: int = 0
         self.selecting_synset: bool = False
+        self.example_options: list[str] = []
+        self.current_example_index: int = 0
+        self.example_index_selected: Optional[int] = None
+        self.selecting_example: bool = False
 
     def _build_fields(self) -> None:
         for field in self.fields:
@@ -180,6 +184,11 @@ class CardEditor(QWidget):
         self.term_title.setText(title)
 
         defaults = self.synset_options[self.current_syn_index]
+        self.example_options = cast(List[str], defaults.get("examples", []))
+        self.current_example_index = 0
+        self.example_index_selected = None
+        self.selecting_example = False
+
         # populate display fields and ensure display-only labels are unbracketed
         field_map = {f.key: f for f in self.fields}
         for key, (label_widget, display, input_widget) in self.widgets.items():
@@ -197,7 +206,22 @@ class CardEditor(QWidget):
             return
         if field_key not in self.widgets:
             return
-        _, display, input_widget = self.widgets[field_key]
+        if field_key == "example" and self.example_options and self.example_index_selected is None:
+            if len(self.example_options) == 1:
+                self.confirm_example_option_selection(0)
+                return
+            self.selecting_example = True
+            mw = self.window()
+            if hasattr(mw, "setWindowTitle"):
+                mw.setWindowTitle(f"Press 1-{len(self.example_options)} to select example")
+            _, display, _ = self.widgets.get("example", (None, None, None))
+            if display is not None:
+                preview = "\n".join(
+                    f"({i+1}) {ex}" for i, ex in enumerate(self.example_options)
+                )
+                display.setText(preview)
+            return
+        label_widget, display, input_widget = self.widgets[field_key]
         text = display.text()
         if isinstance(input_widget, QLineEdit):
             input_widget.setText(text)
@@ -258,6 +282,21 @@ class CardEditor(QWidget):
         mw = self.window()
         if hasattr(mw, "setWindowTitle"):
             mw.setWindowTitle("Card Editor")
+
+    def confirm_example_option_selection(self, index: int) -> None:
+        """Confirm selected example option and populate the example field."""
+        if not self.selecting_example:
+            return
+        if index < 0 or index >= len(self.example_options):
+            return
+        self.selecting_example = False
+        self.example_index_selected = index
+        mw = self.window()
+        if hasattr(mw, "setWindowTitle"):
+            mw.setWindowTitle("Card Editor")
+        _, display, _ = self.widgets.get("example", (None, None, None))
+        if display is not None:
+            display.setText(self.example_options[index])
 
     def _apply_current_defaults(self) -> None:
         """Apply synset defaults and update title with index."""
@@ -381,6 +420,12 @@ class MainWindow(QMainWindow):
                 if ke.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
                     self.card_editor.confirm_syn_option_selection()
                     return True
+            if self.card_editor.selecting_example:
+                if Qt.Key_1 <= ke.key() <= Qt.Key_9:
+                    idx = ke.key() - Qt.Key_1
+                    self.card_editor.confirm_example_option_selection(idx)
+                    return True
+                return True
             if int(ke.modifiers()) == Qt.NoModifier:
                 focused = QApplication.focusWidget()
                 if isinstance(focused, (QLineEdit, QTextEdit)):
