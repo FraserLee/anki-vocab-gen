@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QTextEdit, QLabel, QLineEdit, QSizePolicy
+    QPushButton, QTextEdit, QLabel, QLineEdit, QSizePolicy, QComboBox
 )
 from PyQt5.QtCore import Qt, QEvent
 import sys
@@ -182,6 +182,12 @@ class MainWindow(QMainWindow):
         left_layout.addWidget(QLabel("Input Terms:"))
         left_layout.addWidget(self.text_input)
         left_layout.addStretch()
+        lang_row = QHBoxLayout()
+        lang_row.addWidget(QLabel("Target Language:"))
+        self.target_lang_combo = QComboBox()
+        self.target_lang_combo.addItems(["Chinese", "English"])
+        lang_row.addWidget(self.target_lang_combo)
+        left_layout.addLayout(lang_row)
 
         right_layout = QVBoxLayout()
         right_layout.addWidget(self.card_editor)
