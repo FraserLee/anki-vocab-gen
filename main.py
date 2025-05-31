@@ -100,6 +100,8 @@ class CardEditor(QWidget):
         self.pinyin_input.hide(); self.pinyin_display.show()
         self.notes_input.hide(); self.notes_display.show()
     def start_edit(self, field):
+        if self.term_title.text() in ("(none)", "(no more terms)"):
+            return
         if field == 'definition':
             self.definition_input.setText(self.definition_display.text())
             self.definition_display.hide(); self.definition_input.show();
