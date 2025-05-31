@@ -57,11 +57,9 @@ class CardEditor(QWidget):
         super().__init__()
         self.fields = LANGUAGE_FIELDS["Chinese"]
         self.widgets: Dict[str, tuple[QLabel, QWidget]] = {}
-        self.term_label = QLabel("Current Term:")
         self.term_title = QLabel("(none)")
         self.term_title.setStyleSheet("font-weight: bold; font-size: 18px")
         self._layout = QVBoxLayout()
-        self._layout.addWidget(self.term_label)
         self._layout.addWidget(self.term_title)
         self._fields_start_index = self._layout.count()
         self._build_fields()
