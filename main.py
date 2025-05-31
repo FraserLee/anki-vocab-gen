@@ -196,7 +196,7 @@ class MainWindow(QMainWindow):
         main_layout = QHBoxLayout()
 
         left_layout = QVBoxLayout()
-        left_layout.addWidget(QLabel("Input Terms:"))
+        left_layout.addWidget(QLabel("Queue:"))
         left_layout.addWidget(self.text_input)
         left_layout.addStretch()
         lang_row = QHBoxLayout()
