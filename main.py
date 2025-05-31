@@ -62,7 +62,7 @@ class CardEditor(QWidget):
         super().__init__()
         self.fields = LANGUAGE_FIELDS["English"]
         self.defaults_provider: Callable[[str], Any] = lambda _: {}
-        self.widgets: Dict[str, tuple[QLabel, Union[QLineEdit, QTextAreaEdit]]] = {}
+        self.widgets: Dict[str, tuple[QLabel, QLabel, Union[QLineEdit, QTextAreaEdit]]] = {}
         self.term_title = QLabel("(none)")
         self.term_title.setStyleSheet("font-weight: bold; font-size: 18px")
         self.term_title.setWordWrap(True)
@@ -78,6 +78,7 @@ class CardEditor(QWidget):
     def _build_fields(self) -> None:
         for field in self.fields:
 
+            label_widget = QLabel(field.label)
             display = QLabel("")
             display.setWordWrap(True)
 
@@ -99,21 +100,26 @@ class CardEditor(QWidget):
             if field.input_widget_cls == QTextAreaEdit:
                 row: QBoxLayout = QVBoxLayout()
                 sub_row = QHBoxLayout()
-                sub_row.addWidget(QLabel(field.label), alignment=Qt.AlignTop)
+                sub_row.addWidget(label_widget, alignment=Qt.AlignTop)
                 sub_row.addWidget(display, 1, Qt.AlignTop)
                 row.addLayout(sub_row)
                 row.addWidget(input_widget)
                 self._layout.addLayout(row)
             elif field.input_widget_cls == QLineEdit:
                 row = QHBoxLayout()
-                row.addWidget(QLabel(field.label), alignment=Qt.AlignTop)
+                row.addWidget(label_widget, alignment=Qt.AlignTop)
                 row.addWidget(display, 1, Qt.AlignTop)
                 row.addWidget(input_widget, 1, Qt.AlignTop)
                 self._layout.addLayout(row)
             else:
                 raise ValueError(f"Unsupported input widget class: {field.input_widget_cls}")
 
-            self.widgets[field.key] = (display, input_widget)
+            self.widgets[field.key] = (label_widget, display, input_widget)
+
+    def _strip_brackets(self, label: str) -> str:
+        if len(label) >= 3 and label[0] == '[' and label[2] == ']':
+            return label[1] + label[3:]
+        return label
 
     def set_fields(self, lang: str) -> None:
 
@@ -168,18 +174,24 @@ class CardEditor(QWidget):
         self.term_title.setText(title)
 
         defaults = self.synset_options[self.current_syn_index]
-        for key, (display, input_widget) in self.widgets.items():
+        # populate display fields and ensure display-only labels are unbracketed
+        field_map = {f.key: f for f in self.fields}
+        for key, (label_widget, display, input_widget) in self.widgets.items():
             input_widget.clear()
             display.setText(defaults.get(key, ""))
             input_widget.hide()
             display.show()
+            if self.selecting_synset:
+                label_widget.setText(self._strip_brackets(field_map[key].label))
+            else:
+                label_widget.setText(field_map[key].label)
 
     def start_edit(self, field_key: str) -> None:
         if self.term_title.text() in ("(none)", "(no more terms)") or self.selecting_synset:
             return
         if field_key not in self.widgets:
             return
-        display, input_widget = self.widgets[field_key]
+        label_widget, display, input_widget = self.widgets[field_key]
         text = display.text()
         if isinstance(input_widget, QLineEdit):
             input_widget.setText(text)
@@ -193,7 +205,7 @@ class CardEditor(QWidget):
     def finish_edit(self, field_key: str) -> None:
         if field_key not in self.widgets:
             return
-        display, input_widget = self.widgets[field_key]
+        label_widget, display, input_widget = self.widgets[field_key]
         if isinstance(input_widget, QLineEdit):
             txt = input_widget.text()
         else:
@@ -201,10 +213,15 @@ class CardEditor(QWidget):
         display.setText(txt)
         input_widget.hide()
         display.show()
+        field = next(f for f in self.fields if f.key == field_key)
+        if self.selecting_synset:
+            label_widget.setText(self._strip_brackets(field.label))
+        else:
+            label_widget.setText(field.label)
 
     def _on_field_finished(self, field_key: str) -> None:
         self.finish_edit(field_key)
-        display, input_widget = self.widgets[field_key]
+        _, display, input_widget = self.widgets[field_key]
         input_widget.clearFocus()
         mw = self.window()
         if hasattr(mw, "next_button"):
@@ -229,6 +246,7 @@ class CardEditor(QWidget):
         if not self.selecting_synset:
             return
         self.selecting_synset = False
+        self._apply_current_defaults()
         text = self.term_title.text().split(" ", 1)[0]
         self.term_title.setText(text)
 
@@ -249,8 +267,14 @@ class CardEditor(QWidget):
             term = f"{term} ({' - '.join(info_parts)})"
         self.term_title.setText(term)
         defaults = self.synset_options[self.current_syn_index]
-        for key, (display, input_widget) in self.widgets.items():
+        # update display-only fields and unbracket labels
+        field_map = {f.key: f for f in self.fields}
+        for key, (label_widget, display, input_widget) in self.widgets.items():
             display.setText(defaults.get(key, ""))
+            if self.selecting_synset:
+                label_widget.setText(self._strip_brackets(field_map[key].label))
+            else:
+                label_widget.setText(field_map[key].label)
 
 
 class MainWindow(QMainWindow):
