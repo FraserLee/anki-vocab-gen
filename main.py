@@ -38,16 +38,16 @@ class CardField:
 
 LANGUAGE_FIELDS = {
     "Chinese": [
-        CardField("definition", "Definition:", QLineEdit, "Enter definition here", Qt.Key_D),
-        CardField("example", "Example sentence:", QLineEdit, "Enter example sentence here", Qt.Key_E),
-        CardField("pinyin", "Pinyin:", QLineEdit, "Enter pinyin here", Qt.Key_P),
-        CardField("notes", "Notes:", QTextAreaEdit, "Enter notes here", Qt.Key_N),
+        CardField("definition",  "[D]efinition:",        QLineEdit,      "Enter definition here",        Qt.Key_D),
+        CardField("example",     "[E]xample sentence:",  QLineEdit,      "Enter example sentence here",  Qt.Key_E),
+        CardField("pinyin",      "[P]inyin:",            QLineEdit,      "Enter pinyin here",            Qt.Key_P),
+        CardField("notes",       "[N]otes:",             QTextAreaEdit,  "Enter notes here",             Qt.Key_N),
     ],
     "English": [
-        CardField("definition", "Definition:", QLineEdit, "Enter definition here", Qt.Key_D),
-        CardField("example", "Example sentence:", QLineEdit, "Enter example sentence here", Qt.Key_E),
-        CardField("ipa", "IPA:", QLineEdit, "Enter IPA here", Qt.Key_I),
-        CardField("notes", "Notes:", QTextAreaEdit, "Enter notes here", Qt.Key_N),
+        CardField("definition",  "[D]efinition:",        QLineEdit,      "Enter definition here",        Qt.Key_D),
+        CardField("example",     "[E]xample sentence:",  QLineEdit,      "Enter example sentence here",  Qt.Key_E),
+        CardField("ipa",         "[I]PA:",               QLineEdit,      "Enter IPA here",               Qt.Key_I),
+        CardField("notes",       "[N]otes:",             QTextAreaEdit,  "Enter notes here",             Qt.Key_N),
     ],
 }
 
