@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QBoxLayout, QLayout,
-    QPushButton, QTextEdit, QLabel, QLineEdit, QSizePolicy, QComboBox
+    QPushButton, QTextEdit, QLabel, QLineEdit, QComboBox
 )
 from PyQt5.QtCore import Qt, QEvent, QObject
 from PyQt5.QtGui import QKeyEvent, QFocusEvent, QMouseEvent
