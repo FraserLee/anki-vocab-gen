@@ -183,23 +183,10 @@ class CardEditor(QWidget):
             title = f"{text} ({' - '.join(info_parts)})"
         self.term_title.setText(title)
 
-        defaults = self.synset_options[self.current_syn_index]
-        self.example_options = cast(List[str], defaults.get("examples", []))
         self.current_example_index = 0
         self.example_index_selected = None
         self.selecting_example = False
-
-        # populate display fields and ensure display-only labels are unbracketed
-        field_map = {f.key: f for f in self.fields}
-        for key, (label_widget, display, input_widget) in self.widgets.items():
-            input_widget.clear()
-            display.setText(defaults.get(key, ""))
-            input_widget.hide()
-            display.show()
-            if self.selecting_synset:
-                label_widget.setText(self._strip_brackets(field_map[key].label))
-            else:
-                label_widget.setText(field_map[key].label)
+        self._apply_current_defaults()
 
     def start_edit(self, field_key: str) -> None:
         if self.term_title.text() in ("(none)", "(no more terms)") or self.selecting_synset:
@@ -217,11 +204,11 @@ class CardEditor(QWidget):
             _, display, _ = self.widgets.get("example", (None, None, None))
             if display is not None:
                 preview = "\n".join(
-                    f"({i+1}) {ex}" for i, ex in enumerate(self.example_options)
+                    f"({i+1}) {self._bold_term(ex)}" for i, ex in enumerate(self.example_options)
                 )
                 display.setText(preview)
             return
-        label_widget, display, input_widget = self.widgets[field_key]
+        _, display, input_widget = self.widgets[field_key]
         text = display.text()
         if isinstance(input_widget, QLineEdit):
             input_widget.setText(text)
@@ -315,10 +302,13 @@ class CardEditor(QWidget):
             term = f"{term} ({' - '.join(info_parts)})"
         self.term_title.setText(term)
         defaults = self.synset_options[self.current_syn_index]
+        self.example_options = cast(List[str], defaults.get("example", []))
         # update display-only fields and unbracket labels
         field_map = {f.key: f for f in self.fields}
         for key, (label_widget, display, _) in self.widgets.items():
-            display.setText(defaults.get(key, ""))
+            value = defaults.get(key, "")
+            if isinstance(value, list):
+                value = "\n".join(value)
             if self.selecting_synset:
                 label_widget.setText(self._strip_brackets(field_map[key].label))
             else:

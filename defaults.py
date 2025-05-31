@@ -19,7 +19,7 @@ def english_defaults(word: str) -> List[Dict[str, Any]]:
         options.append({
             "definition": definition,
             "ipa": ipa,
-            "examples": examples_list,
+            "example": examples_list,
             "pos": pos,
             "function": pos,
             "synonyms": synonyms,
@@ -28,7 +28,7 @@ def english_defaults(word: str) -> List[Dict[str, Any]]:
         options.append({
             "definition": "",
             "ipa": ipa,
-            "examples": [],
+            "example": [],
             "pos": "",
             "function": "",
             "synonyms": "",
