@@ -14,7 +14,7 @@ def english_defaults(word: str) -> List[Dict[str, str]]:
         examples_list = syn.examples() or []
         example = "; ".join(examples_list)
         raw_pos = syn.pos()
-        pos = pos_map.get(raw_pos, raw_pos)
+        pos = pos_map[raw_pos]
         lemmas = [lemma.name().replace("_", " ") for lemma in syn.lemmas()]
         synonyms = "; ".join([l for l in lemmas if l.lower() != word.lower()])
         options.append({
