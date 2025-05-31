@@ -61,7 +61,7 @@ class CardEditor(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self.fields = LANGUAGE_FIELDS["Chinese"]
-        self.defaults_provider: Callable[[str], Any] = lambda _: {}
+        self.defaults_provider: Callable[[str], List[Dict[str, Any]]] = LANGUAGE_DEFAULTS["Chinese"]
         self.widgets: Dict[str, tuple[QLabel, QLabel, Union[QLineEdit, QTextAreaEdit]]] = {}
         self.term_title = QLabel("(none)")
         self.term_title.setStyleSheet("font-weight: bold; font-size: 18px")
@@ -79,6 +79,7 @@ class CardEditor(QWidget):
         self.current_example_index: int = 0
         self.example_index_selected: Optional[int] = None
         self.selecting_example: bool = False
+        self.current_term: Optional[str] = None
 
     def _build_fields(self) -> None:
         for field in self.fields:
@@ -88,11 +89,11 @@ class CardEditor(QWidget):
             display.setWordWrap(True)
             display.setTextFormat(Qt.RichText)
 
-            if field.input_widget_cls == QTextAreaEdit:
+            if field.input_widget_cls is QTextAreaEdit:
                 input_widget = field.input_widget_cls(
                     finish_callback=lambda k=field.key: self._on_field_finished(k)
                 )
-            elif field.input_widget_cls == QLineEdit:
+            elif field.input_widget_cls is QLineEdit:
                 input_widget = field.input_widget_cls()
                 input_widget.editingFinished.connect(
                     lambda k=field.key: self._on_field_finished(k)
@@ -103,23 +104,19 @@ class CardEditor(QWidget):
             input_widget.setPlaceholderText(field.placeholder)
             input_widget.hide()
 
-            if field.input_widget_cls == QTextAreaEdit:
-                row: QBoxLayout = QVBoxLayout()
-                sub_row = QHBoxLayout()
-                sub_row.addWidget(label_widget, alignment=Qt.AlignTop)
-                sub_row.addWidget(display, 1, Qt.AlignTop)
-                row.addLayout(sub_row)
-                row.addWidget(input_widget)
-                self._layout.addLayout(row)
-            elif field.input_widget_cls == QLineEdit:
-                row = QHBoxLayout()
-                row.addWidget(label_widget, alignment=Qt.AlignTop)
-                row.addWidget(display, 1, Qt.AlignTop)
-                row.addWidget(input_widget, 1, Qt.AlignTop)
-                self._layout.addLayout(row)
+            if isinstance(input_widget, QTextAreaEdit):
+                container = QVBoxLayout()
+                header = QHBoxLayout()
+                header.addWidget(label_widget, alignment=Qt.AlignTop)
+                header.addWidget(display, 1, Qt.AlignTop)
+                container.addLayout(header)
+                container.addWidget(input_widget)
             else:
-                raise ValueError(f"Unsupported input widget class: {field.input_widget_cls}")
-
+                container = QHBoxLayout()
+                container.addWidget(label_widget, alignment=Qt.AlignTop)
+                container.addWidget(display, 1, Qt.AlignTop)
+                container.addWidget(input_widget, 1, Qt.AlignTop)
+            self._layout.addLayout(container)
             self.widgets[field.key] = (label_widget, display, input_widget)
 
         self._layout.addStretch(1)
@@ -162,34 +159,18 @@ class CardEditor(QWidget):
                     self._clear_layout(sub_layout)
 
     def set_term(self, text: str) -> None:
-        options = self.defaults_provider(text)
-        if isinstance(options, list):
-            self.synset_options = options
-        else:
-            self.synset_options = [options]
+        """Start defaults-selection or editing for the given term."""
+        self.current_term = text
+        self.synset_options = self.defaults_provider(text)
         self.current_syn_index = 0
         self.selecting_synset = len(self.synset_options) > 1
         mw = self.window()
         if hasattr(mw, "setWindowTitle"):
-            if self.selecting_synset:
-                mw.setWindowTitle("Press Up/Down to browse defaults, Space to select")
-            else:
-                mw.setWindowTitle("Card Editor")
-
-        count = len(self.synset_options)
-        index = 1
-        title = text
-        if self.selecting_synset:
-            curr = self.synset_options[0]
-            info_parts = [f"{index}/{count}"]
-            pos = curr.get("pos", "")
-            if pos:
-                info_parts.append(pos)
-            syns = curr.get("synonyms", "")
-            if syns:
-                info_parts.append(syns)
-            title = f"{text} ({' - '.join(info_parts)})"
-        self.term_title.setText(title)
+            mw.setWindowTitle(
+                "Press Up/Down to browse defaults, Space to select"
+                if self.selecting_synset
+                else "Card Editor"
+            )
 
         self.current_example_index = 0
         self.example_index_selected = None
@@ -272,8 +253,6 @@ class CardEditor(QWidget):
             return
         self.selecting_synset = False
         self._apply_current_defaults()
-        text = self.term_title.text().split(" ", 1)[0]
-        self.term_title.setText(text)
         mw = self.window()
         if hasattr(mw, "setWindowTitle"):
             mw.setWindowTitle("Card Editor")
@@ -294,34 +273,36 @@ class CardEditor(QWidget):
             display.setText(self.example_options[index])
 
     def _apply_current_defaults(self) -> None:
-        """Apply synset defaults and update title with index."""
-        count = len(self.synset_options)
-        index = self.current_syn_index + 1
-        term = self.term_title.text().split(" ", 1)[0]
-        if self.selecting_synset:
-            curr = self.synset_options[self.current_syn_index]
-            info_parts = [f"{index}/{count}"]
-            pos = curr.get("pos", "")
-            if pos:
-                info_parts.append(pos)
-            syns = curr.get("synonyms", "")
-            if syns:
-                info_parts.append(syns)
-            term = f"{term} ({' - '.join(info_parts)})"
-        self.term_title.setText(term)
+        """Apply synset defaults to fields and update the title."""
+        term = self.current_term or ""
         defaults = self.synset_options[self.current_syn_index]
+        # if multiple synsets, append index/pos/synonyms
+        if self.selecting_synset:
+            total = len(self.synset_options)
+            idx = self.current_syn_index + 1
+            parts = [f"{idx}/{total}"]
+            pos = defaults.get("pos", "")
+            if pos:
+                parts.append(pos)
+            syns = defaults.get("synonyms", "")
+            if syns:
+                parts.append(syns)
+            term = f"{term} ({' - '.join(parts)})"
+        self.term_title.setText(term)
+        # update example options
         self.example_options = cast(List[str], defaults.get("example", []))
-        # update display-only fields and unbracket labels
+        # update each field's display and label
         field_map = {f.key: f for f in self.fields}
         for key, (label_widget, display, _) in self.widgets.items():
-            value = defaults.get(key, "")
-            if isinstance(value, list):
-                value = "\n<hr> ".join(value)
-            display.setText(value)
-            if self.selecting_synset:
-                label_widget.setText(self._strip_brackets(field_map[key].label))
-            else:
-                label_widget.setText(field_map[key].label)
+            val = defaults.get(key, "")
+            if isinstance(val, list):
+                val = "\n<hr> ".join(val)
+            display.setText(val)
+            label_widget.setText(
+                self._strip_brackets(field_map[key].label)
+                if self.selecting_synset
+                else field_map[key].label
+            )
 
 
 class MainWindow(QMainWindow):
