@@ -149,9 +149,19 @@ class CardEditor(QWidget):
         self.current_syn_index = 0
         self.selecting_synset = len(self.synset_options) > 1
 
+        count = len(self.synset_options)
+        index = 1
         title = text
         if self.selecting_synset:
-            title = f"{text} (1/{len(self.synset_options)})"
+            curr = self.synset_options[0]
+            info_parts = [f"{index}/{count}"]
+            pos = curr.get("pos", "")
+            if pos:
+                info_parts.append(pos)
+            syns = curr.get("synonyms", "")
+            if syns:
+                info_parts.append(syns)
+            title = f"{text} ({' - '.join(info_parts)})"
         self.term_title.setText(title)
 
         defaults = self.synset_options[self.current_syn_index]
@@ -162,7 +172,6 @@ class CardEditor(QWidget):
             display.show()
 
     def start_edit(self, field_key: str) -> None:
-        # Block editing until synset selection is confirmed
         if self.term_title.text() in ("(none)", "(no more terms)") or self.selecting_synset:
             return
         if field_key not in self.widgets:
@@ -224,10 +233,18 @@ class CardEditor(QWidget):
         """Apply synset defaults and update title with index."""
         count = len(self.synset_options)
         index = self.current_syn_index + 1
-        title = self.term_title.text().split(" ", 1)[0]
+        term = self.term_title.text().split(" ", 1)[0]
         if self.selecting_synset:
-            title = f"{title} ({index}/{count})"
-        self.term_title.setText(title)
+            curr = self.synset_options[self.current_syn_index]
+            info_parts = [f"{index}/{count}"]
+            pos = curr.get("pos", "")
+            if pos:
+                info_parts.append(pos)
+            syns = curr.get("synonyms", "")
+            if syns:
+                info_parts.append(syns)
+            term = f"{term} ({' - '.join(info_parts)})"
+        self.term_title.setText(term)
         defaults = self.synset_options[self.current_syn_index]
         for key, (display, input_widget) in self.widgets.items():
             display.setText(defaults.get(key, ""))
