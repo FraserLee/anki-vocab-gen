@@ -4,12 +4,13 @@ version = "0.1.0"
 readme = "README.md"
 requires-python = "~=3.11"
 dependencies = [
+    "eng-to-ipa~=0.0.2",
     "pyqt5~=5.15",
 ]
 
 [dependency-groups]
 dev = [
-    "mypy>=1.16.0",
+    "mypy~=1.16",
     "PyQt5-stubs",
 ]
 

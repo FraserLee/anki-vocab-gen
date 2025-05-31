@@ -4,10 +4,11 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QEvent, QObject
 from PyQt5.QtGui import QKeyEvent, QFocusEvent, QMouseEvent
-from typing import Any, Callable, Optional, cast, Dict, Union
 from dataclasses import dataclass
-import sys
+from defaults import LANGUAGE_DEFAULTS
+from typing import Any, Callable, Optional, cast, Dict, Union
 import os
+import sys
 import unicodedata
 
 # Editable multi-line text: Enter finishes edit, Shift+Enter newline, blur also finishes
@@ -52,18 +53,13 @@ LANGUAGE_FIELDS = {
     ],
 }
 
-LANGUAGE_DEFAULTS = {
-    "English": lambda word: {
-        "definition": f"TODO: call to the system dictionary to get the definition of {word}",
-    },
-}
 
 
 class CardEditor(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self.fields = LANGUAGE_FIELDS["Chinese"]
-        self.defaults_provider: Callable[[str], Dict[str, str]] = lambda word: {}
+        self.defaults_provider: Callable[[str], Dict[str, str]] = lambda _: {}
         self.widgets: Dict[str, tuple[QLabel, Union[QLineEdit, QTextAreaEdit]]] = {}
         self.term_title = QLabel("(none)")
         self.term_title.setStyleSheet("font-weight: bold; font-size: 18px")
