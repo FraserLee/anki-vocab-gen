@@ -6,3 +6,14 @@ requires-python = "~=3.11"
 dependencies = [
     "pyqt5~=5.15",
 ]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.16.0",
+    "PyQt5-stubs",
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+
