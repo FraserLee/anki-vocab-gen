@@ -8,6 +8,7 @@ from typing import Any, Callable, Optional, cast, Dict, Union
 from dataclasses import dataclass
 import sys
 import os
+import unicodedata
 
 # Editable multi-line text: Enter finishes edit, Shift+Enter newline, blur also finishes
 class QTextAreaEdit(QTextEdit):
@@ -237,6 +238,7 @@ class MainWindow(QMainWindow):
 
     def show_next_card(self) -> None:
         text = self.text_input.toPlainText().strip().lower()
+        text = unicodedata.normalize("NFKC", text) # replace U+2F00 with U+4E00, etc.
         lines = text.splitlines()
 
         if not lines:
