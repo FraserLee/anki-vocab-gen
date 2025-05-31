@@ -301,6 +301,7 @@ class MainWindow(QMainWindow):
         # Next button
         self.next_button = QPushButton("Next")
         self.next_button.clicked.connect(self.show_next_card)
+        self.next_button.setToolTip("Press Space or Enter to advance to the next card")
 
 
         # Layout
