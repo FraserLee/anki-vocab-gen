@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict, List, Optional, Union, cast
 import sys
 import unicodedata
 import data
+from urllib.parse import quote_plus
 
 # Editable multi-line text: Enter finishes edit, Shift+Enter newline, blur also finishes
 class QTextAreaEdit(QTextEdit):
@@ -329,11 +330,12 @@ class MainWindow(QMainWindow):
         lang_row = QHBoxLayout()
         lang_row.addWidget(QLabel("Target Language:"))
         self.target_lang_combo = QComboBox()
-        self.target_lang_combo.addItems(["Chinese", "English"])
-        self.target_lang_combo.currentTextChanged.connect(self.card_editor.set_fields)
+        self.target_lang_combo.addItems(["Chinese", "English", "Other"])
+        self.previous_target_lang = self.target_lang_combo.currentText()
+        self.target_lang_combo.currentTextChanged.connect(self.on_target_lang_changed)
         lang_row.addWidget(self.target_lang_combo)
         lang_row.addStretch()
-        self.card_editor.set_fields(self.target_lang_combo.currentText())
+        self.card_editor.set_fields(self.previous_target_lang)
         left_layout.addLayout(lang_row)
         left_layout.addWidget(QLabel("Queue:"))
         left_layout.addWidget(self.text_input)
@@ -351,6 +353,29 @@ class MainWindow(QMainWindow):
         inst: Optional[QObject] = QApplication.instance()
         assert inst is not None
         inst.installEventFilter(self)
+
+    def on_target_lang_changed(self, lang: str) -> None:
+        """Handle selection of target language, opening issue link if 'Other' is chosen."""
+        if lang == "Other":
+            import webbrowser
+
+            # Pre-fill the issue title for requesting support for the selected language
+            issue_title = f"Support for XYZ language"
+            url = (
+                "https://github.com/FraserLee/anki-vocab-gen/issues/new"
+                f"?title={quote_plus(issue_title)}"
+            )
+            webbrowser.open(url)
+            # revert to the previous valid language selection
+            idx = self.target_lang_combo.findText(self.previous_target_lang)
+            if idx >= 0:
+                blocked = self.target_lang_combo.blockSignals(True)
+                self.target_lang_combo.setCurrentIndex(idx)
+                self.target_lang_combo.blockSignals(blocked)
+            return
+
+        self.previous_target_lang = lang
+        self.card_editor.set_fields(lang)
 
     def show_next_card(self) -> None:
         text = self.text_input.toPlainText().strip().lower()
