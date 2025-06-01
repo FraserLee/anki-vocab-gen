@@ -72,9 +72,9 @@ class CardEditor(QWidget):
         self._fields_start_index = self._layout.count()
         self._build_fields()
         self.setLayout(self._layout)
-        self.synset_options: list[Dict[str, str]] = []
-        self.current_syn_index: int = 0
-        self.selecting_synset: bool = False
+        self.defaults_options: list[Dict[str, str]] = []
+        self.current_default_index: int = 0
+        self.selecting_defaults: bool = False
         self.example_options: list[str] = []
         self.current_example_index: int = 0
         self.example_index_selected: Optional[int] = None
@@ -161,14 +161,14 @@ class CardEditor(QWidget):
     def set_term(self, text: str) -> None:
         """Start defaults-selection or editing for the given term."""
         self.current_term = text
-        self.synset_options = self.defaults_provider(text)
-        self.current_syn_index = 0
-        self.selecting_synset = len(self.synset_options) > 1
+        self.defaults_options = self.defaults_provider(text)
+        self.current_default_index = 0
+        self.selecting_defaults = len(self.defaults_options) > 1
         mw = self.window()
         if hasattr(mw, "setWindowTitle"):
             mw.setWindowTitle(
                 "Press Up/Down to browse defaults, Space to select"
-                if self.selecting_synset
+                if self.selecting_defaults
                 else "Card Editor"
             )
 
@@ -178,7 +178,7 @@ class CardEditor(QWidget):
         self._apply_current_defaults()
 
     def start_edit(self, field_key: str) -> None:
-        if self.term_title.text() in ("(none)", "(no more terms)") or self.selecting_synset:
+        if self.term_title.text() in ("(none)", "(no more terms)") or self.selecting_defaults:
             return
         if field_key not in self.widgets:
             return
@@ -220,7 +220,7 @@ class CardEditor(QWidget):
         input_widget.hide()
         display.show()
         field = next(f for f in self.fields if f.key == field_key)
-        if self.selecting_synset:
+        if self.selecting_defaults:
             label_widget.setText(self._strip_brackets(field.label))
         else:
             label_widget.setText(field.label)
@@ -233,25 +233,22 @@ class CardEditor(QWidget):
         if hasattr(mw, "next_button"):
             mw.next_button.setFocus()
 
-    def next_syn_option(self) -> None:
-        """Preview next synset option."""
-        if not self.selecting_synset:
+    def next_defaults_option(self) -> None:
+        if not self.selecting_defaults:
             return
-        self.current_syn_index = (self.current_syn_index + 1) % len(self.synset_options)
+        self.current_default_index = (self.current_default_index + 1) % len(self.defaults_options)
         self._apply_current_defaults()
 
-    def prev_syn_option(self) -> None:
-        """Preview previous synset option."""
-        if not self.selecting_synset:
+    def prev_defaults_option(self) -> None:
+        if not self.selecting_defaults:
             return
-        self.current_syn_index = (self.current_syn_index - 1) % len(self.synset_options)
+        self.current_default_index = (self.current_default_index - 1) % len(self.defaults_options)
         self._apply_current_defaults()
 
-    def confirm_syn_option_selection(self) -> None:
-        """Confirm current synset option and disable selection mode."""
-        if not self.selecting_synset:
+    def confirm_defaults_option_selection(self) -> None:
+        if not self.selecting_defaults:
             return
-        self.selecting_synset = False
+        self.selecting_defaults = False
         self._apply_current_defaults()
         mw = self.window()
         if hasattr(mw, "setWindowTitle"):
@@ -273,13 +270,11 @@ class CardEditor(QWidget):
             display.setText(self.example_options[index])
 
     def _apply_current_defaults(self) -> None:
-        """Apply synset defaults to fields and update the title."""
         term = self.current_term or ""
-        defaults = self.synset_options[self.current_syn_index]
-        # if multiple synsets, append index/pos/synonyms
-        if self.selecting_synset:
-            total = len(self.synset_options)
-            idx = self.current_syn_index + 1
+        defaults = self.defaults_options[self.current_default_index]
+        if self.selecting_defaults:
+            total = len(self.defaults_options)
+            idx = self.current_default_index + 1
             parts = [f"{idx}/{total}"]
             pos = defaults.get("pos", "")
             if pos:
@@ -300,7 +295,7 @@ class CardEditor(QWidget):
             display.setText(val)
             label_widget.setText(
                 self._strip_brackets(field_map[key].label)
-                if self.selecting_synset
+                if self.selecting_defaults
                 else field_map[key].label
             )
 
@@ -389,15 +384,15 @@ class MainWindow(QMainWindow):
                     focused.clearFocus()
         if event.type() == QEvent.KeyPress:
             ke = cast(QKeyEvent, event)
-            if self.card_editor.selecting_synset:
+            if self.card_editor.selecting_defaults:
                 if ke.key() in (Qt.Key_Up, Qt.Key_K):
-                    self.card_editor.prev_syn_option()
+                    self.card_editor.prev_defaults_option()
                     return True
                 if ke.key() in (Qt.Key_Down, Qt.Key_J, Qt.Key_Tab):
-                    self.card_editor.next_syn_option()
+                    self.card_editor.next_defaults_option()
                     return True
                 if ke.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
-                    self.card_editor.confirm_syn_option_selection()
+                    self.card_editor.confirm_defaults_option_selection()
                     return True
             if self.card_editor.selecting_example:
                 if Qt.Key_1 <= ke.key() <= Qt.Key_9:
@@ -409,8 +404,8 @@ class MainWindow(QMainWindow):
                 focused = QApplication.focusWidget()
                 if isinstance(focused, (QLineEdit, QTextEdit)):
                     return super().eventFilter(obj, event)
-                # While choosing between synsets, block editing shortcuts
-                if self.card_editor.selecting_synset:
+                # While choosing between defaults, block editing shortcuts
+                if self.card_editor.selecting_defaults:
                     return True
                 k = ke.key()
                 for field in self.card_editor.fields:
