@@ -105,6 +105,7 @@ class CardEditor(QWidget):
             input_widget.setPlaceholderText(field.placeholder)
             input_widget.hide()
 
+            container: QBoxLayout
             if isinstance(input_widget, QTextAreaEdit):
                 container = QVBoxLayout()
                 header = QHBoxLayout()
@@ -130,7 +131,7 @@ class CardEditor(QWidget):
     def set_fields(self, lang: str) -> None:
 
         self.fields = LANGUAGE_FIELDS.get(lang, [])
-        self.defaults_provider = LANGUAGE_DEFAULTS.get(lang, lambda _: {})
+        self.defaults_provider = LANGUAGE_DEFAULTS.get(lang, lambda _: [])
 
         while self._layout.count() > self._fields_start_index:
             item = self._layout.takeAt(self._layout.count() - 1)

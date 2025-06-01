@@ -66,7 +66,7 @@ trad_cl_re = re.compile(r'CL:([^\|]*).\|(.\[[^\]]+\])')
 # ^^^^^
 trad_other_re = re.compile(r' [^\[\]|]+\|([^\[\]|]+\[[^\[\]|]+\])')
 
-def fix_up_zh(defn):
+def fix_up_zh(defn: str) -> str:
 
     changed = True
     while changed:
