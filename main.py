@@ -91,6 +91,7 @@ class CardEditor(QWidget):
         self.example_index_selected: Optional[int] = None
         self.selecting_example: bool = False
         self.current_term: Optional[str] = None
+        self.editable: bool = False
 
     def _build_fields(self) -> None:
         for field in self.fields:
@@ -157,7 +158,7 @@ class CardEditor(QWidget):
             return label[1] + label[3:]
         return label
 
-    def set_fields(self, lang: str) -> None:
+    def set_fields(self, lang: str, editable: bool) -> None:
 
         self.fields = LANGUAGE_FIELDS.get(lang, [])
         self.defaults_provider = LANGUAGE_DEFAULTS.get(lang, lambda _: [])
@@ -175,8 +176,7 @@ class CardEditor(QWidget):
         self._build_fields()
         # If a term is already loaded, re-enter defaults-selection for it with the new language
         curr = self.term_title.text().split(" ", 1)[0]
-        if curr not in ("(none)", "(no more terms)"):
-            self.set_term(curr)
+        self.set_term(curr, editable)
 
     def _clear_layout(self, layout: QLayout) -> None:
         while layout.count():
@@ -189,8 +189,9 @@ class CardEditor(QWidget):
                 if sub_layout:
                     self._clear_layout(sub_layout)
 
-    def set_term(self, text: str) -> None:
+    def set_term(self, text: str, editable: bool) -> None:
         """Start defaults-selection or editing for the given term."""
+        self.editable = editable
         self.current_term = text
         self.defaults_options = self.defaults_provider(text)
         self.current_default_index = 0
@@ -209,7 +210,7 @@ class CardEditor(QWidget):
         self._apply_current_defaults()
 
     def start_edit(self, field_key: str) -> None:
-        if self.term_title.text() in ("(none)", "(no more terms)") or self.selecting_defaults:
+        if not self.editable or self.selecting_defaults:
             return
         if field_key not in self.widgets:
             return
@@ -251,7 +252,7 @@ class CardEditor(QWidget):
         input_widget.hide()
         display.show()
         field = next(f for f in self.fields if f.key == field_key)
-        if self.selecting_defaults:
+        if self.selecting_defaults or not self.editable:
             label_widget.setText(self._strip_brackets(field.label))
         else:
             label_widget.setText(field.label)
@@ -483,7 +484,7 @@ class MainWindow(QMainWindow):
         self.target_lang_combo.currentTextChanged.connect(self.on_target_lang_changed)
         lang_row.addWidget(self.target_lang_combo)
         lang_row.addStretch()
-        self.card_editor.set_fields(self.previous_target_lang)
+        self.card_editor.set_fields(self.previous_target_lang, False)
         left_layout.addLayout(lang_row)
         left_layout.addWidget(QLabel("Queue:"))
         left_layout.addWidget(self.text_input)
@@ -523,7 +524,7 @@ class MainWindow(QMainWindow):
             return
 
         self.previous_target_lang = lang
-        self.card_editor.set_fields(lang)
+        self.card_editor.set_fields(lang, self.card_editor.editable)
 
     def show_next_card(self) -> None:
         text = self.text_input.toPlainText().strip().lower()
@@ -531,11 +532,11 @@ class MainWindow(QMainWindow):
         lines = text.splitlines()
 
         if not lines:
-            self.card_editor.set_term("(no more terms)")
+            self.card_editor.set_term("(no more terms)", False)
             return
 
         next_term = lines.pop(0)
-        self.card_editor.set_term(next_term)
+        self.card_editor.set_term(next_term, True)
         self.text_input.setPlainText("\n".join(lines))
 
 
@@ -577,8 +578,8 @@ class MainWindow(QMainWindow):
                 focused = QApplication.focusWidget()
                 if isinstance(focused, (QLineEdit, QTextEdit)):
                     return super().eventFilter(obj, event)
-                # While choosing between defaults, block editing shortcuts
-                if self.card_editor.selecting_defaults:
+                # While choosing between defaults or if not editable, block editing shortcuts
+                if self.card_editor.selecting_defaults or not self.card_editor.editable:
                     return True
                 k = ke.key()
                 if k == Qt.Key_I:
