@@ -309,7 +309,7 @@ class MainWindow(QMainWindow):
 
         # Left: multi-line text input
         self.text_input = QTextEdit()
-        self.text_input.setPlainText("研究员\n深度\n能力\n与\n积累\n高等教育\nrun\njailhouse\nrock")
+        self.text_input.setPlainText("研究员\n深度\n能力\n与\n积累\n高等教育\nrunning\njailhouse\nrock")
 
         # Right: card display
         self.card_editor = CardEditor()
