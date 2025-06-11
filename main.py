@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (
     QPushButton, QTextEdit, QLabel, QLineEdit, QComboBox, QScrollArea, QFrame
 )
 from PyQt5.QtCore import Qt, QEvent, QObject, QMimeData
-from PyQt5.QtGui import QKeyEvent, QFocusEvent, QMouseEvent, QDragEnterEvent, QDropEvent
+from PyQt5.QtGui import QKeyEvent, QFocusEvent, QMouseEvent, QDragEnterEvent, QDropEvent, QPixmap
 from dataclasses import dataclass
 from defaults import LANGUAGE_DEFAULTS
 from typing import Any, Callable, Dict, List, Optional, Union, cast
@@ -94,8 +94,16 @@ class CardEditor(QWidget):
 
             label_widget = QLabel(field.label)
             display = QLabel("")
-            display.setWordWrap(True)
-            display.setTextFormat(Qt.RichText)
+            if field.key == 'image':
+                # Preview images in display mode instead of showing path
+                display.setWordWrap(False)
+                display.setTextFormat(Qt.PlainText)
+                display.setScaledContents(True)
+                display.setAlignment(Qt.AlignCenter)
+                display.setFixedHeight(150)
+            else:
+                display.setWordWrap(True)
+                display.setTextFormat(Qt.RichText)
 
             if field.input_widget_cls is QTextAreaEdit:
                 input_widget = field.input_widget_cls(
@@ -418,7 +426,11 @@ class CardEditor(QWidget):
         self._apply_current_defaults()
         lbl, disp, inp = self.widgets.get('image', (None, None, None))
         if disp is not None:
-            disp.setText(image_path)
+            pix = QPixmap(image_path)
+            if not pix.isNull():
+                disp.setPixmap(pix.scaledToWidth(200, Qt.SmoothTransformation))
+            else:
+                disp.setText(image_path)
         mw = self.window()
         if hasattr(mw, 'next_button'):
             mw.next_button.setFocus()
