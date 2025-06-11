@@ -93,6 +93,28 @@ class CardEditor(QWidget):
         self.current_term: Optional[str] = None
         self.editable: bool = False
 
+    def _clear_fields(self) -> None:
+        """Remove all field widgets/layouts down to initial start index."""
+        while self._layout.count() > self._fields_start_index:
+            item = self._layout.takeAt(self._layout.count() - 1)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+            else:
+                layout = item.layout()
+                if layout:
+                    self._clear_layout(layout)
+
+    def _set_title(self, title: str) -> None:
+        mw = self.window()
+        if hasattr(mw, "setWindowTitle"):
+            mw.setWindowTitle(title)
+
+    def _focus_next_button(self) -> None:
+        mw = self.window()
+        if hasattr(mw, "next_button"):
+            mw.next_button.setFocus()
+
     def _build_fields(self) -> None:
         for field in self.fields:
 
@@ -163,15 +185,7 @@ class CardEditor(QWidget):
         self.fields = LANGUAGE_FIELDS.get(lang, [])
         self.defaults_provider = LANGUAGE_DEFAULTS.get(lang, lambda _: [])
 
-        while self._layout.count() > self._fields_start_index:
-            item = self._layout.takeAt(self._layout.count() - 1)
-            widget = item.widget()
-            if widget:
-                widget.deleteLater()
-            else:
-                layout = item.layout()
-                if layout:
-                    self._clear_layout(layout)
+        self._clear_fields()
         self.widgets.clear()
         self._build_fields()
         # If a term is already loaded, re-enter defaults-selection for it with the new language
@@ -196,13 +210,11 @@ class CardEditor(QWidget):
         self.defaults_options = self.defaults_provider(text)
         self.current_default_index = 0
         self.selecting_defaults = len(self.defaults_options) > 1
-        mw = self.window()
-        if hasattr(mw, "setWindowTitle"):
-            mw.setWindowTitle(
-                "Press Up/Down to browse defaults, Space to select"
-                if self.selecting_defaults
-                else "Card Editor"
-            )
+        self._set_title(
+            "Press Up/Down to browse defaults, Space to select"
+            if self.selecting_defaults
+            else "Card Editor"
+        )
 
         self.current_example_index = 0
         self.example_index_selected = None
@@ -219,14 +231,10 @@ class CardEditor(QWidget):
                 self.confirm_example_option_selection(0)
                 return
             self.selecting_example = True
-            mw = self.window()
-            if hasattr(mw, "setWindowTitle"):
-                mw.setWindowTitle(f"Press 1-{len(self.example_options)} to select example")
+            self._set_title(f"Press 1-{len(self.example_options)} to select example")
             _, display, _ = self.widgets.get("example", (None, None, None))
             if display is not None:
-                preview = "\n".join(
-                    f"({i+1}) {ex}" for i, ex in enumerate(self.example_options)
-                )
+                preview = "\n".join(f"({i+1}) {ex}" for i, ex in enumerate(self.example_options))
                 display.setText(preview)
             return
         _, display, input_widget = self.widgets[field_key]
@@ -261,9 +269,7 @@ class CardEditor(QWidget):
         self.finish_edit(field_key)
         _, _, input_widget = self.widgets[field_key]
         input_widget.clearFocus()
-        mw = self.window()
-        if hasattr(mw, "next_button"):
-            mw.next_button.setFocus()
+        self._focus_next_button()
 
     def next_defaults_option(self) -> None:
         if not self.selecting_defaults:
@@ -282,9 +288,7 @@ class CardEditor(QWidget):
             return
         self.selecting_defaults = False
         self._apply_current_defaults()
-        mw = self.window()
-        if hasattr(mw, "setWindowTitle"):
-            mw.setWindowTitle("Card Editor")
+        self._set_title("Card Editor")
 
     def confirm_example_option_selection(self, index: int) -> None:
         """Confirm selected example option and populate the example field."""
@@ -294,9 +298,7 @@ class CardEditor(QWidget):
             return
         self.selecting_example = False
         self.example_index_selected = index
-        mw = self.window()
-        if hasattr(mw, "setWindowTitle"):
-            mw.setWindowTitle("Card Editor")
+        self._set_title("Card Editor")
         _, display, _ = self.widgets.get("example", (None, None, None))
         if display is not None:
             display.setText(self.example_options[index])
@@ -333,15 +335,7 @@ class CardEditor(QWidget):
 
     def show_image_drop(self) -> None:
         """Show a drop area for image input, replacing fields list."""
-        while self._layout.count() > self._fields_start_index:
-            item = self._layout.takeAt(self._layout.count() - 1)
-            widget = item.widget()
-            if widget:
-                widget.deleteLater()
-            else:
-                layout = item.layout()
-                if layout:
-                    self._clear_layout(layout)
+        self._clear_fields()
         self._drop_area = QFrame()
         self._drop_area.setFrameStyle(QFrame.Box | QFrame.Plain)
         self._drop_area.setAcceptDrops(True)
@@ -446,9 +440,7 @@ class CardEditor(QWidget):
                 disp.setPixmap(pix)
             else:
                 disp.setText(image_path)
-        mw = self.window()
-        if hasattr(mw, 'next_button'):
-            mw.next_button.setFocus()
+        self._focus_next_button()
 
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
