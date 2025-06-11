@@ -13,6 +13,7 @@ import data
 from urllib.parse import quote_plus
 import shutil
 import os
+import imghdr
 import urllib.request
 from urllib.parse import urlparse
 
@@ -342,11 +343,18 @@ class CardEditor(QWidget):
     def _handle_image_drop(self, mime_data: QMimeData) -> None:
         urls = mime_data.urls()
         image_path = None
+        # Handle file or URL drops
         if urls:
-            url = urls[0]
-            if url.isLocalFile():
-                local_path = url.toLocalFile()
+            entry = urls[0]
+            # Local file: copy and detect extension if missing
+            if entry.isLocalFile():
+                local_path = entry.toLocalFile()
                 ext = os.path.splitext(local_path)[1].lstrip('.')
+                if not ext:
+                    with open(local_path, 'rb') as f:
+                        data_bytes = f.read()
+                    detected = imghdr.what(None, data_bytes)
+                    ext = 'jpg' if detected == 'jpeg' else (detected or 'jpg')
                 dest = data.get_new_image_path(self.current_term or "", ext)
                 try:
                     shutil.copy(local_path, dest)
@@ -355,26 +363,48 @@ class CardEditor(QWidget):
                     return
                 image_path = dest
             else:
-                remote = url.toString()
-                path = urlparse(remote).path
-                ext = os.path.splitext(path)[1].lstrip('.')
+                # Remote URL: download into memory to detect type
+                remote = entry.toString()
+                try:
+                    resp = urllib.request.urlopen(remote)
+                    data_bytes = resp.read()
+                except Exception as e:
+                    print(f"Error fetching image from URL: {e}")
+                    return
+                detected = imghdr.what(None, data_bytes)
+                ext = (
+                    'jpg' if detected == 'jpeg'
+                    else detected
+                ) or os.path.splitext(urlparse(remote).path)[1].lstrip('.') or 'jpg'
                 dest = data.get_new_image_path(self.current_term or "", ext)
                 try:
-                    urllib.request.urlretrieve(remote, dest)
+                    with open(dest, 'wb') as out:
+                        out.write(data_bytes)
                 except Exception as e:
-                    print(f"Error downloading image from URL: {e}")
+                    print(f"Error writing image file: {e}")
                     return
                 image_path = dest
         else:
+            # Plain text drop: treat as URL if HTTP(S)
             text = mime_data.text().strip()
             if text.startswith("http://") or text.startswith("https://"):
-                path = urlparse(text).path
-                ext = os.path.splitext(path)[1].lstrip('.')
+                try:
+                    resp = urllib.request.urlopen(text)
+                    data_bytes = resp.read()
+                except Exception as e:
+                    print(f"Error fetching image from URL: {e}")
+                    return
+                detected = imghdr.what(None, data_bytes)
+                ext = (
+                    'jpg' if detected == 'jpeg'
+                    else detected
+                ) or os.path.splitext(urlparse(text).path)[1].lstrip('.') or 'jpg'
                 dest = data.get_new_image_path(self.current_term or "", ext)
                 try:
-                    urllib.request.urlretrieve(text, dest)
+                    with open(dest, 'wb') as out:
+                        out.write(data_bytes)
                 except Exception as e:
-                    print(f"Error downloading image from URL: {e}")
+                    print(f"Error writing image file: {e}")
                     return
                 image_path = dest
         if image_path:
