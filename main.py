@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QBoxLayout, QLayout,
-    QPushButton, QTextEdit, QLabel, QLineEdit, QComboBox, QScrollArea, QFrame
+    QPushButton, QTextEdit, QLabel, QLineEdit, QComboBox, QScrollArea, QFrame,
+    QSizePolicy
 )
 from PyQt5.QtCore import Qt, QEvent, QObject, QMimeData
 from PyQt5.QtGui import QKeyEvent, QFocusEvent, QMouseEvent, QDragEnterEvent, QDropEvent, QPixmap
@@ -34,6 +35,8 @@ class QTextAreaEdit(QTextEdit):
                 self.finish_callback()
         else:
             super().keyPressEvent(event)
+
+
 
 
 @dataclass
@@ -93,17 +96,28 @@ class CardEditor(QWidget):
         for field in self.fields:
 
             label_widget = QLabel(field.label)
-            display = QLabel("")
+            # Special-case image: vertical layout with the preview below the label
             if field.key == 'image':
-                # Preview images in display mode instead of showing path
-                display.setWordWrap(False)
-                display.setTextFormat(Qt.PlainText)
+                display = QLabel("")
                 display.setScaledContents(True)
-                display.setAlignment(Qt.AlignCenter)
-                display.setFixedHeight(150)
-            else:
-                display.setWordWrap(True)
-                display.setTextFormat(Qt.RichText)
+                display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+                input_widget = QLineEdit()
+                input_widget.editingFinished.connect(
+                    lambda k=field.key: self._on_field_finished(k)
+                )
+                input_widget.setPlaceholderText(field.placeholder)
+                input_widget.hide()
+                img_container = QVBoxLayout()
+                img_container.addWidget(label_widget, alignment=Qt.AlignTop)
+                img_container.addWidget(display)
+                img_container.addWidget(input_widget)
+                self._layout.addLayout(img_container)
+                self.widgets[field.key] = (label_widget, display, input_widget)
+                continue
+
+            display = QLabel("")
+            display.setWordWrap(True)
+            display.setTextFormat(Qt.RichText)
 
             if field.input_widget_cls is QTextAreaEdit:
                 input_widget = field.input_widget_cls(
@@ -428,7 +442,7 @@ class CardEditor(QWidget):
         if disp is not None:
             pix = QPixmap(image_path)
             if not pix.isNull():
-                disp.setPixmap(pix.scaledToWidth(200, Qt.SmoothTransformation))
+                disp.setPixmap(pix)
             else:
                 disp.setText(image_path)
         mw = self.window()
