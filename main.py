@@ -2,8 +2,8 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QBoxLayout, QLayout,
     QPushButton, QTextEdit, QLabel, QLineEdit, QComboBox, QScrollArea, QFrame
 )
-from PyQt5.QtCore import Qt, QEvent, QObject
-from PyQt5.QtGui import QKeyEvent, QFocusEvent, QMouseEvent
+from PyQt5.QtCore import Qt, QEvent, QObject, QMimeData
+from PyQt5.QtGui import QKeyEvent, QFocusEvent, QMouseEvent, QDragEnterEvent, QDropEvent
 from dataclasses import dataclass
 from defaults import LANGUAGE_DEFAULTS
 from typing import Any, Callable, Dict, List, Optional, Union, cast
@@ -11,6 +11,10 @@ import sys
 import unicodedata
 import data
 from urllib.parse import quote_plus
+import shutil
+import os
+import urllib.request
+from urllib.parse import urlparse
 
 # Editable multi-line text: Enter finishes edit, Shift+Enter newline, blur also finishes
 class QTextAreaEdit(QTextEdit):
@@ -46,6 +50,7 @@ LANGUAGE_FIELDS = {
         CardField("function",    "[f]unction:",          QLineEdit,      "Enter function here",          Qt.Key_F),
         CardField("example",     "[e]xample sentence:",  QLineEdit,      "Enter example sentence here",  Qt.Key_E),
         CardField("notes",       "[n]otes:",             QTextAreaEdit,  "Enter notes here",             Qt.Key_N),
+        CardField("image",       "[i]mage:",             QLineEdit,      "Image path",                   Qt.Key_I),
     ],
     "English": [
         CardField("definition",  "[d]efinition:",        QLineEdit,      "Enter definition here",        Qt.Key_D),
@@ -53,6 +58,7 @@ LANGUAGE_FIELDS = {
         CardField("ipa",         "[i]pa:",               QLineEdit,      "Enter IPA here",               Qt.Key_I),
         CardField("example",     "[e]xample sentence:",  QLineEdit,      "Enter example sentence here",  Qt.Key_E),
         CardField("notes",       "[n]otes:",             QTextAreaEdit,  "Enter notes here",             Qt.Key_N),
+        CardField("image",       "[i]mage:",             QLineEdit,      "Image path",                   Qt.Key_I),
     ],
 }
 
@@ -301,6 +307,91 @@ class CardEditor(QWidget):
                 else field_map[key].label
             )
 
+    def show_image_drop(self) -> None:
+        """Show a drop area for image input, replacing fields list."""
+        while self._layout.count() > self._fields_start_index:
+            item = self._layout.takeAt(self._layout.count() - 1)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+            else:
+                layout = item.layout()
+                if layout:
+                    self._clear_layout(layout)
+        self._drop_area = QFrame()
+        self._drop_area.setFrameStyle(QFrame.Box | QFrame.Plain)
+        self._drop_area.setAcceptDrops(True)
+        def _drag_enter(event: QDragEnterEvent) -> None:
+            md: QMimeData = event.mimeData()
+            if md.hasUrls() or md.hasText():
+                event.acceptProposedAction()
+            else:
+                event.ignore()
+        self._drop_area.dragEnterEvent = _drag_enter  # type: ignore
+
+        def _drop_event(event: QDropEvent) -> None:
+            self._handle_image_drop(event.mimeData())
+            event.acceptProposedAction()
+        self._drop_area.dropEvent = _drop_event  # type: ignore
+        label = QLabel("drag and drop an image here")
+        label.setAlignment(Qt.AlignCenter)
+        drop_layout = QVBoxLayout(self._drop_area)
+        drop_layout.addWidget(label, alignment=Qt.AlignCenter)
+        self._layout.addWidget(self._drop_area)
+
+    def _handle_image_drop(self, mime_data: QMimeData) -> None:
+        urls = mime_data.urls()
+        image_path = None
+        if urls:
+            url = urls[0]
+            if url.isLocalFile():
+                local_path = url.toLocalFile()
+                ext = os.path.splitext(local_path)[1].lstrip('.')
+                dest = data.get_new_image_path(self.current_term or "", ext)
+                try:
+                    shutil.copy(local_path, dest)
+                except Exception as e:
+                    print(f"Error copying image file: {e}")
+                    return
+                image_path = dest
+            else:
+                remote = url.toString()
+                path = urlparse(remote).path
+                ext = os.path.splitext(path)[1].lstrip('.')
+                dest = data.get_new_image_path(self.current_term or "", ext)
+                try:
+                    urllib.request.urlretrieve(remote, dest)
+                except Exception as e:
+                    print(f"Error downloading image from URL: {e}")
+                    return
+                image_path = dest
+        else:
+            text = mime_data.text().strip()
+            if text.startswith("http://") or text.startswith("https://"):
+                path = urlparse(text).path
+                ext = os.path.splitext(path)[1].lstrip('.')
+                dest = data.get_new_image_path(self.current_term or "", ext)
+                try:
+                    urllib.request.urlretrieve(text, dest)
+                except Exception as e:
+                    print(f"Error downloading image from URL: {e}")
+                    return
+                image_path = dest
+        if image_path:
+            self._end_image_drop(image_path)
+
+    def _end_image_drop(self, image_path: str) -> None:
+        if hasattr(self, '_drop_area'):
+            self._drop_area.deleteLater()
+            del self._drop_area
+        self._build_fields()
+        self._apply_current_defaults()
+        lbl, disp, inp = self.widgets.get('image', (None, None, None))
+        if disp is not None:
+            disp.setText(image_path)
+        mw = self.window()
+        if hasattr(mw, 'next_button'):
+            mw.next_button.setFocus()
 
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
@@ -434,6 +525,9 @@ class MainWindow(QMainWindow):
                 if self.card_editor.selecting_defaults:
                     return True
                 k = ke.key()
+                if k == Qt.Key_I:
+                    self.card_editor.show_image_drop()
+                    return True
                 for field in self.card_editor.fields:
                     if field.shortcut is not None and k == field.shortcut and field.key in self.card_editor.widgets:
                         self.card_editor.start_edit(field.key)
