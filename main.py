@@ -54,7 +54,7 @@ LANGUAGE_FIELDS = {
         CardField("function",    "[f]unction:",          QLineEdit,      "Enter function here",          Qt.Key_F),
         CardField("example",     "[e]xample sentence:",  QLineEdit,      "Enter example sentence here",  Qt.Key_E),
         CardField("notes",       "[n]otes:",             QTextAreaEdit,  "Enter notes here",             Qt.Key_N),
-        CardField("image",       "[i]mage:",             QLineEdit,      "Image path",                   Qt.Key_I),
+        CardField("image",       "[i]mage:",             QLineEdit,      "",                             Qt.Key_I),
     ],
     "English": [
         CardField("definition",  "[d]efinition:",        QLineEdit,      "Enter definition here",        Qt.Key_D),
@@ -62,7 +62,7 @@ LANGUAGE_FIELDS = {
         CardField("ipa",         "[i]pa:",               QLineEdit,      "Enter IPA here",               Qt.Key_I),
         CardField("example",     "[e]xample sentence:",  QLineEdit,      "Enter example sentence here",  Qt.Key_E),
         CardField("notes",       "[n]otes:",             QTextAreaEdit,  "Enter notes here",             Qt.Key_N),
-        CardField("image",       "[i]mage:",             QLineEdit,      "Image path",                   Qt.Key_I),
+        CardField("image",       "[i]mage:",             QLineEdit,      "",                             Qt.Key_I),
     ],
 }
 
