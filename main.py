@@ -37,7 +37,27 @@ class QTextAreaEdit(QTextEdit):
             super().keyPressEvent(event)
 
 
-
+class QImageEdit(QWidget):
+    def __init__(
+        self,
+        label: str,
+        placeholder: str = "",
+        finish_callback: Optional[Callable[[], None]] = None,
+    ) -> None:
+        super().__init__()
+        self.label_widget = QLabel(label)
+        self.display = QLabel("")
+        self.display.setScaledContents(True)
+        self.display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.input_widget = QLineEdit()
+        if finish_callback:
+            self.input_widget.editingFinished.connect(finish_callback)
+        self.input_widget.setPlaceholderText(placeholder)
+        self.input_widget.hide()
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.label_widget, alignment=Qt.AlignTop)
+        layout.addWidget(self.display)
+        layout.addWidget(self.input_widget)
 
 @dataclass
 class CardField:
@@ -54,7 +74,7 @@ LANGUAGE_FIELDS = {
         CardField("function",    "[f]unction:",          QLineEdit,      "Enter function here",          Qt.Key_F),
         CardField("example",     "[e]xample sentence:",  QLineEdit,      "Enter example sentence here",  Qt.Key_E),
         CardField("notes",       "[n]otes:",             QTextAreaEdit,  "Enter notes here",             Qt.Key_N),
-        CardField("image",       "[i]mage:",             QLineEdit,      "",                             Qt.Key_I),
+        CardField("image",       "[i]mage:",             QImageEdit,     "",                             Qt.Key_I),
     ],
     "English": [
         CardField("definition",  "[d]efinition:",        QLineEdit,      "Enter definition here",        Qt.Key_D),
@@ -62,7 +82,7 @@ LANGUAGE_FIELDS = {
         CardField("ipa",         "[i]pa:",               QLineEdit,      "Enter IPA here",               Qt.Key_I),
         CardField("example",     "[e]xample sentence:",  QLineEdit,      "Enter example sentence here",  Qt.Key_E),
         CardField("notes",       "[n]otes:",             QTextAreaEdit,  "Enter notes here",             Qt.Key_N),
-        CardField("image",       "[i]mage:",             QLineEdit,      "",                             Qt.Key_I),
+        CardField("image",       "[i]mage:",             QImageEdit,     "",                             Qt.Key_I),
     ],
 }
 
@@ -117,26 +137,21 @@ class CardEditor(QWidget):
 
     def _build_fields(self) -> None:
         for field in self.fields:
+            if field.input_widget_cls is QImageEdit:
+                input_widget = field.input_widget_cls(
+                    field.label,
+                    field.placeholder,
+                    finish_callback=lambda k=field.key: self._on_field_finished(k),
+                )
+                self._layout.addWidget(input_widget)
+                self.widgets[field.key] = (
+                    input_widget.label_widget,
+                    input_widget.display,
+                    input_widget.input_widget,
+                )
+                continue
 
             label_widget = QLabel(field.label)
-            # Special-case image: vertical layout with the preview below the label
-            if field.key == 'image':
-                display = QLabel("")
-                display.setScaledContents(True)
-                display.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-                input_widget = QLineEdit()
-                input_widget.editingFinished.connect(
-                    lambda k=field.key: self._on_field_finished(k)
-                )
-                input_widget.setPlaceholderText(field.placeholder)
-                input_widget.hide()
-                img_container = QVBoxLayout()
-                img_container.addWidget(label_widget, alignment=Qt.AlignTop)
-                img_container.addWidget(display)
-                img_container.addWidget(input_widget)
-                self._layout.addLayout(img_container)
-                self.widgets[field.key] = (label_widget, display, input_widget)
-                continue
 
             display = QLabel("")
             display.setWordWrap(True)
@@ -326,7 +341,10 @@ class CardEditor(QWidget):
             val = defaults.get(key, "")
             if isinstance(val, list):
                 val = "\n<hr> ".join(val)
-            display.setText(val)
+            if key == 'image':
+                display.clear()
+            else:
+                display.setText(val)
             label_widget.setText(
                 self._strip_brackets(field_map[key].label)
                 if self.selecting_defaults
