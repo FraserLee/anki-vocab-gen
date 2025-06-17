@@ -1,40 +1,21 @@
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional, Union, cast
+from PyQt5.QtCore import Qt, QEvent, QObject, QMimeData
+from PyQt5.QtGui import QKeyEvent, QFocusEvent, QMouseEvent, QDragEnterEvent, QDropEvent, QPixmap
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QBoxLayout, QLayout,
     QPushButton, QTextEdit, QLabel, QLineEdit, QComboBox, QScrollArea, QFrame,
     QSizePolicy
 )
-from PyQt5.QtCore import Qt, QEvent, QObject, QMimeData
-from PyQt5.QtGui import QKeyEvent, QFocusEvent, QMouseEvent, QDragEnterEvent, QDropEvent, QPixmap
-from dataclasses import dataclass
 from defaults import LANGUAGE_DEFAULTS
-from typing import Any, Callable, Dict, List, Optional, Union, cast
+from urllib.parse import quote_plus, urlparse
+import data
+import imghdr
+import os
+import shutil
 import sys
 import unicodedata
-import data
-from urllib.parse import quote_plus
-import shutil
-import os
-import imghdr
 import urllib.request
-from urllib.parse import urlparse
-
-# Editable multi-line text: Enter finishes edit, Shift+Enter newline, blur also finishes
-class QTextAreaEdit(QTextEdit):
-    def __init__(self, finish_callback: Optional[Callable[[], None]] = None, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        self.finish_callback = finish_callback
-
-    def focusOutEvent(self, event: QFocusEvent) -> None:
-        super().focusOutEvent(event)
-        if self.finish_callback:
-            self.finish_callback()
-
-    def keyPressEvent(self, event: QKeyEvent) -> None:
-        if event.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Escape) and int(event.modifiers()) == Qt.NoModifier:
-            if self.finish_callback:
-                self.finish_callback()
-        else:
-            super().keyPressEvent(event)
 
 
 class QImageEdit(QWidget):
@@ -73,7 +54,7 @@ LANGUAGE_FIELDS = {
         CardField("pinyin",      "[p]inyin:",            QLineEdit,      "Enter pinyin here",            Qt.Key_P),
         CardField("function",    "[f]unction:",          QLineEdit,      "Enter function here",          Qt.Key_F),
         CardField("example",     "[e]xample sentence:",  QLineEdit,      "Enter example sentence here",  Qt.Key_E),
-        CardField("notes",       "[n]otes:",             QTextAreaEdit,  "Enter notes here",             Qt.Key_N),
+        CardField("notes",       "[n]otes:",             QTextEdit,      "Enter notes here",             Qt.Key_N),
         CardField("image",       "[i]mage:",             QImageEdit,     "",                             Qt.Key_I),
     ],
     "English": [
@@ -81,7 +62,7 @@ LANGUAGE_FIELDS = {
         CardField("function",    "[f]unction:",          QLineEdit,      "Enter function here",          Qt.Key_F),
         CardField("ipa",         "[i]pa:",               QLineEdit,      "Enter IPA here",               Qt.Key_I),
         CardField("example",     "[e]xample sentence:",  QLineEdit,      "Enter example sentence here",  Qt.Key_E),
-        CardField("notes",       "[n]otes:",             QTextAreaEdit,  "Enter notes here",             Qt.Key_N),
+        CardField("notes",       "[n]otes:",             QTextEdit,      "Enter notes here",             Qt.Key_N),
         CardField("image",       "[i]mage:",             QImageEdit,     "",                             Qt.Key_I),
     ],
 }
@@ -93,7 +74,8 @@ class CardEditor(QWidget):
         super().__init__()
         self.fields = LANGUAGE_FIELDS["Chinese"]
         self.defaults_provider: Callable[[str], List[Dict[str, Any]]] = LANGUAGE_DEFAULTS["Chinese"]
-        self.widgets: Dict[str, tuple[QLabel, QLabel, Union[QLineEdit, QTextAreaEdit]]] = {}
+        self.widgets: Dict[str, tuple[QLabel, QLabel, Union[QLineEdit, QTextEdit]]] = {}
+        self._field_by_widget: Dict[QTextEdit, str] = {}
         self.term_title = QLabel("(none)")
         self.term_title.setStyleSheet("font-weight: bold; font-size: 18px")
         self.term_title.setWordWrap(True)
@@ -157,12 +139,13 @@ class CardEditor(QWidget):
             display.setWordWrap(True)
             display.setTextFormat(Qt.RichText)
 
-            if field.input_widget_cls is QTextAreaEdit:
-                input_widget = field.input_widget_cls(
-                    finish_callback=lambda k=field.key: self._on_field_finished(k)
-                )
+            if field.input_widget_cls is QTextEdit:
+                input_widget = QTextEdit()
+                # finish edit on focus out or plain Enter/Escape
+                input_widget.installEventFilter(self)
+                self._field_by_widget[input_widget] = field.key
             elif field.input_widget_cls is QLineEdit:
-                input_widget = field.input_widget_cls()
+                input_widget = QLineEdit()
                 input_widget.editingFinished.connect(
                     lambda k=field.key: self._on_field_finished(k)
                 )
@@ -173,7 +156,7 @@ class CardEditor(QWidget):
             input_widget.hide()
 
             container: QBoxLayout
-            if isinstance(input_widget, QTextAreaEdit):
+            if isinstance(input_widget, QTextEdit):
                 container = QVBoxLayout()
                 header = QHBoxLayout()
                 header.addWidget(label_widget, alignment=Qt.AlignTop)
@@ -194,6 +177,17 @@ class CardEditor(QWidget):
         if len(label) >= 3 and label[0] == '[' and label[2] == ']':
             return label[1] + label[3:]
         return label
+
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
+        field_key = self._field_by_widget.get(obj) if isinstance(obj, QTextEdit) else None
+        if field_key is not None:
+            if event.type() == QEvent.FocusOut:
+                self._on_field_finished(field_key)
+            elif event.type() == QEvent.KeyPress and isinstance(event, QKeyEvent):
+                if event.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Escape) and int(event.modifiers()) == Qt.NoModifier:
+                    self._on_field_finished(field_key)
+                    return True
+        return super().eventFilter(obj, event)
 
     def set_fields(self, lang: str, editable: bool) -> None:
 
